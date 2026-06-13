@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Text, DateTime, Enum as SAEnum
+from sqlalchemy import Column, String, Integer, Text, DateTime, JSON, Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 import enum
@@ -10,6 +10,7 @@ class DeploymentStatus(str, enum.Enum):
     PENDING = "pending"
     CLONING = "cloning"
     DETECTING = "detecting"
+    ANALYZING = "analyzing"
     BUILDING = "building"
     STARTING = "starting"
     CONFIGURING_PROXY = "configuring_proxy"
@@ -55,8 +56,9 @@ class Deployment(Base):
     subdomain = Column(String(255), nullable=True, unique=True)
     url = Column(String(512), nullable=True)
 
-    # Logs
+    # Logs & Security
     logs = Column(Text, default="")
+    security_report = Column(JSON, nullable=True)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

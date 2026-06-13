@@ -34,6 +34,7 @@ from app.detector import detect_framework
 from app.docker_utils import generate_dockerfile, build_image, run_container, stop_container, get_container_status
 from app.caddy import add_reverse_proxy, remove_reverse_proxy, get_deployment_url
 from app.ws import get_broadcaster, log_sync, remove_broadcaster
+from app.security_scanner import run_security_scan
 
 router = APIRouter()
 
@@ -74,6 +75,7 @@ class DeploymentOut(BaseModel):
     host_port: int | None
     subdomain: str | None
     url: str | None
+    security_report: list | None
     created_at: str | None
     updated_at: str | None
 
@@ -128,6 +130,7 @@ def _to_out(dep: Deployment) -> dict:
         "host_port": dep.host_port,
         "subdomain": dep.subdomain,
         "url": dep.url,
+        "security_report": dep.security_report or [],
         "created_at": dep.created_at.isoformat() if dep.created_at else None,
         "updated_at": dep.updated_at.isoformat() if dep.updated_at else None,
     }
@@ -206,6 +209,21 @@ def run_deployment_pipeline(deployment_id: str, db_url: str):
         log("📄 Generating Dockerfile...")
         dockerfile = generate_dockerfile(fw.framework, repo_dir, fw.start_command)
         log("✅ Dockerfile ready")
+
+        # --- Step 3.5: Security Scan ---
+        _update_status(db, dep, DeploymentStatus.ANALYZING)
+        log("🔍 Running security scan...")
+        vulnerabilities = run_security_scan(repo_dir)
+        dep.security_report = vulnerabilities
+        db.commit()
+        
+        if vulnerabilities:
+            log(f"⚠️  Found {len(vulnerabilities)} security issues:")
+            for v in vulnerabilities:
+                line_info = f" (line {v['line']})" if v.get('line') else ""
+                log(f"   [{v['severity']}] {v['type']} in {v['file']}{line_info}")
+        else:
+            log("✅ Security scan passed (No issues found)")
 
         # --- Step 4: Build Docker image ---
         _update_status(db, dep, DeploymentStatus.BUILDING)
@@ -440,4 +458,35 @@ def get_container_health(deployment_id: UUID, db: Session = Depends(get_db)):
         "deployment_id": str(dep.id),
         "deployment_status": dep.status.value,
         "container_status": status["status"],
+    }
+
+
+@router.get("/deploy/{deployment_id}/security-report")
+def get_security_report(deployment_id: UUID, db: Session = Depends(get_db)):
+    """
+    Get the security scan report for a deployment.
+    Returns the list of vulnerabilities found during the ANALYZING phase.
+    Used by the frontend dashboard and the AI Copilot (Role 4).
+    """
+    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+    if not dep:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+
+    report = dep.security_report or []
+    critical = [v for v in report if v.get("severity") == "CRITICAL"]
+    high = [v for v in report if v.get("severity") == "HIGH"]
+    medium = [v for v in report if v.get("severity") == "MEDIUM"]
+    low = [v for v in report if v.get("severity") == "LOW"]
+
+    return {
+        "deployment_id": str(dep.id),
+        "project_name": dep.project_name,
+        "total_issues": len(report),
+        "summary": {
+            "critical": len(critical),
+            "high": len(high),
+            "medium": len(medium),
+            "low": len(low),
+        },
+        "vulnerabilities": report,
     }
