@@ -349,19 +349,20 @@ Framework detection is automatic via static analysis.
 
 ### Must Have
 
-- GitHub integration (OAuth + repo selection)
-- Deployment engine (clone → build → run)
-- Security Score (hero metric)
-- Secret scanner (source + env files)
-- Docker security analyzer
-- AI remediation suggestions
+- ✅ GitHub integration (OAuth + repo selection)
+- ✅ Deployment engine (clone → detect → build → run)
+- ✅ Security Score (hero metric, 0-100 scoring system)
+- ✅ Secret scanner (source + env files + regex patterns for AWS, OpenAI, Stripe, Slack, GitHub tokens)
+- ✅ Docker security analyzer (root user detection, unnecessary port exposure)
+- ✅ AI remediation suggestions (Gemini-powered, with Ollama and local template fallbacks)
+- ✅ Frontend dashboard (Next.js, live logs, deployment pipeline, security reports)
 
 ### Nice To Have
 
-- Open port scanner
-- SSH hardening checks
-- Dependency vulnerability feed (CVE database)
-- Git history secret scanning
+- 🔲 Open port scanner
+- 🔲 SSH hardening checks
+- 🔲 Dependency vulnerability feed (CVE database)
+- 🔲 Git history secret scanning
 
 ### Post-Hackathon
 
@@ -370,6 +371,48 @@ Framework detection is automatic via static analysis.
 - Continuous monitoring
 - Auto-redeploy on push
 - Billing
+
+---
+
+## Quick Start
+
+### Prerequisites
+- Docker & Docker Compose
+- Python 3.12+ with a virtual environment
+- Node.js 20+ (for frontend development only)
+- A GitHub OAuth App ([create one here](https://github.com/settings/developers))
+- (Optional) A Google AI Studio API key for Gemini-powered security advice
+
+### 1. Clone & Configure
+
+```bash
+git clone https://github.com/ishaan-jindal/InfraPilot.git
+cd InfraPilot
+cp backend/.env.example backend/.env
+# Edit backend/.env with your GitHub OAuth credentials and Gemini API key
+```
+
+### 2. Start Infrastructure (Docker)
+
+```bash
+docker compose up -d
+# Starts: PostgreSQL (port 5433), Frontend (port 3000), Caddy reverse proxy
+```
+
+### 3. Start Backend (Local)
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+# Backend runs on http://localhost:8000
+```
+
+### 4. Open the App
+
+Visit http://localhost:3000 → Sign in with GitHub → Deploy a repo!
 
 ---
 
