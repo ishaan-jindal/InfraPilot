@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import re
+import json
 import asyncio
 from typing import Optional
 from uuid import UUID
@@ -74,6 +75,8 @@ class DeploymentOut(BaseModel):
     host_port: int | None
     subdomain: str | None
     url: str | None
+    security_report: list | None
+    security_advice: str | None
     created_at: str | None
     updated_at: str | None
 
@@ -225,10 +228,9 @@ def run_deployment_pipeline(deployment_id: str, db_url: str):
         # --- Step 3.5: Run Security Scan ---
         _update_status(db, dep, DeploymentStatus.SCANNING)
         log("🛡️ Running Security Scan...")
-        
+
         from app.security import run_security_scan, generate_remediation_advice
         from app.config import GEMINI_API_KEY
-        import json
 
         findings = run_security_scan(repo_dir, dockerfile, fw.port)
         dep.security_report = json.dumps(findings)
@@ -241,11 +243,14 @@ def run_deployment_pipeline(deployment_id: str, db_url: str):
                 log("🤖 Generating AI security advice...")
                 advice = generate_remediation_advice(findings, api_key=GEMINI_API_KEY)
                 dep.security_advice = advice
+                db.commit()
                 _update_status(db, dep, DeploymentStatus.AWAITING_APPROVAL)
-                log("🛑 Deployment paused. Please review advice and approve/redeploy to proceed.")
+                log("🛑 Deployment paused. Please review the security advice and approve to proceed.")
                 return
             else:
                 log(f"ℹ️ Security scan completed with {len(findings)} low/medium findings. Proceeding automatically.")
+                dep.security_advice = generate_remediation_advice(findings, api_key=GEMINI_API_KEY)
+                db.commit()
         else:
             log("✅ Security scan completed: No issues found.")
             dep.security_advice = None
