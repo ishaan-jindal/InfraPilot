@@ -81,17 +81,17 @@ Deploy to user-owned servers via SSH.
 
 ---
 
-## Phase 3: Frontend Dashboard 🔲
+## Phase 3: Frontend Dashboard ✅
 
 Next.js dashboard for managing deployments.
 
 | Component | Status | Details |
 |-----------|--------|---------|
-| GitHub login flow | 🔲 Todo | OAuth redirect + token storage |
-| Repository picker | 🔲 Todo | Browse & select repos |
-| Deploy wizard | 🔲 Todo | Choose target, review plan, deploy |
-| Live log viewer | 🔲 Todo | WebSocket-powered real-time logs |
-| Deployment history | 🔲 Todo | List, inspect, redeploy, delete |
+| GitHub login flow | ✅ Done | OAuth redirect + token storage |
+| Repository picker | ✅ Done | Browse & select repos |
+| Deploy wizard | ✅ Done | Choose target, review plan, deploy |
+| Live log viewer | ✅ Done | WebSocket-powered real-time logs |
+| Deployment history | ✅ Done | List, inspect, redeploy, delete |
 | Server management (BYOI) | 🔲 Todo | Add/remove/test SSH servers |
 
 ---
@@ -112,12 +112,18 @@ Next.js dashboard for managing deployments.
 ## Quick Start
 
 ```bash
-# 1. Set up PostgreSQL (one-time)
-cd backend && bash setup_db.sh
+# 1. Provide your secrets in an environment file
+cp backend/.env.example backend/.env
+# Edit backend/.env to include your GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, and GEMINI_API_KEY
 
-# 2. Start the server
-.venv/bin/uvicorn app.main:app --reload
+# 2. Start the database (Ensure PostgreSQL is running locally)
 
-# 3. API docs
-open http://localhost:8000/docs
+# 3. Start the backend
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --reload
+
+# 4. Start the frontend & proxy
+cd ..
+docker compose up -d
 ```

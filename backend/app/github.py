@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import RedirectResponse
 import requests as http_requests
 
-from app.config import GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
+from app.config import GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, FRONTEND_URL
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -16,10 +16,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.get("/github")
 def github_login():
     """Redirect to GitHub OAuth with repo scope for private repo access."""
+    redirect_uri = f"{FRONTEND_URL}/auth/callback"
     github_url = (
         f"https://github.com/login/oauth/authorize"
         f"?client_id={GITHUB_CLIENT_ID}"
         f"&scope=repo"
+        f"&redirect_uri={redirect_uri}"
     )
     return RedirectResponse(github_url)
 

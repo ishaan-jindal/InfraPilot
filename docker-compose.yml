@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Build-time variable needed for Next.js standalone
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    environment:
+      # Runtime variable
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+
+  caddy:
+    image: caddy:2
+    # Run Caddy on the host network so it can proxy to dynamically bound ports from user deployments
+    network_mode: "host"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

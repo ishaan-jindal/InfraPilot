@@ -7,6 +7,10 @@ load_dotenv()
 GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 
+# Frontend URL (for OAuth redirect)
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+
 # Database
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://infrapilot:infrapilot@localhost:5432/infrapilot")
 
