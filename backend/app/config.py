@@ -21,3 +21,10 @@ BASE_DOMAIN = os.getenv("BASE_DOMAIN", "localhost")
 # Port range for managed deployments
 PORT_RANGE_START = int(os.getenv("PORT_RANGE_START", "9000"))
 PORT_RANGE_END = int(os.getenv("PORT_RANGE_END", "9500"))
+
+# Gemini LLM Integration
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Ollama LLM Integration (Fallback)
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
