@@ -113,6 +113,15 @@ def _find_available_port(db: Session) -> int:
 
 def _to_out(dep: Deployment) -> dict:
     """Serialize a Deployment to a response dict."""
+    import json
+    # security_report is stored as a JSON string in the DB (Text column)
+    report = []
+    if dep.security_report:
+        try:
+            report = json.loads(dep.security_report)
+        except Exception:
+            report = []
+
     return {
         "id": str(dep.id),
         "project_name": dep.project_name,
@@ -128,6 +137,8 @@ def _to_out(dep: Deployment) -> dict:
         "host_port": dep.host_port,
         "subdomain": dep.subdomain,
         "url": dep.url,
+        "security_report": report,
+        "security_advice": dep.security_advice or "",
         "created_at": dep.created_at.isoformat() if dep.created_at else None,
         "updated_at": dep.updated_at.isoformat() if dep.updated_at else None,
     }
@@ -627,4 +638,44 @@ def approve_deployment(
         "deployment_id": str(dep.id),
         "status": "pending",
         "message": "Deployment approved. Resuming build & deploy..."
+    }
+
+
+@router.get("/deploy/{deployment_id}/security-report")
+def get_security_report(deployment_id: UUID, db: Session = Depends(get_db)):
+    """
+    Get a structured security scan report with severity summary.
+    Returns findings broken down by severity count — used by the frontend
+    to render the security dashboard card.
+    """
+    import json
+    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+    if not dep:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+
+    report = []
+    if dep.security_report:
+        try:
+            report = json.loads(dep.security_report)
+        except Exception:
+            report = []
+
+    critical = [v for v in report if v.get("severity") == "CRITICAL"]
+    high     = [v for v in report if v.get("severity") == "HIGH"]
+    medium   = [v for v in report if v.get("severity") == "MEDIUM"]
+    low      = [v for v in report if v.get("severity") == "LOW"]
+
+    return {
+        "deployment_id": str(dep.id),
+        "project_name": dep.project_name,
+        "deployment_status": dep.status.value,
+        "total_issues": len(report),
+        "summary": {
+            "critical": len(critical),
+            "high": len(high),
+            "medium": len(medium),
+            "low": len(low),
+        },
+        "vulnerabilities": report,
+        "advice": dep.security_advice or "",
     }

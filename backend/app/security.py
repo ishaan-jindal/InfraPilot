@@ -7,7 +7,12 @@ import google.generativeai as genai
 
 # Secret scanning regexes
 AWS_KEY_PATTERN = re.compile(r"AKIA[0-9A-Z]{16}")
+AWS_SECRET_PATTERN = re.compile(r"(?i)aws_secret_access_key\s*=\s*['\"]?([a-zA-Z0-9/+=]{40})['\"]?")
 OPENAI_KEY_PATTERN = re.compile(r"sk-[a-zA-Z0-9]{48}")
+STRIPE_KEY_PATTERN = re.compile(r"sk_live_[0-9a-zA-Z]{24}")
+SLACK_TOKEN_PATTERN = re.compile(r"xox[baprs]-[0-9]{12}-[0-9]{12}-[a-zA-Z0-9]{24}")
+GITHUB_TOKEN_PATTERN = re.compile(r"ghp_[a-zA-Z0-9]{36}")
+GENERIC_SECRET_PATTERN = re.compile(r"(?i)(password|secret|token|api_key)\s*=\s*['\"]?([a-zA-Z0-9\-_]{8,})['\"]?")
 
 def scan_secrets(repo_dir: str) -> List[Dict]:
     """
@@ -51,7 +56,17 @@ def scan_secrets(repo_dir: str) -> List[Dict]:
                                 "file": rel_path,
                                 "message": f"Potential AWS Access Key ID leaked on line {line_num}: {match[:8]}..."
                             })
-                            
+
+                        # Find AWS Secret Access Keys
+                        aws_secret_matches = AWS_SECRET_PATTERN.findall(line)
+                        for match in aws_secret_matches:
+                            issues.append({
+                                "severity": "CRITICAL",
+                                "type": "LEAKED_SECRET",
+                                "file": rel_path,
+                                "message": f"Potential AWS Secret Access Key leaked on line {line_num}."
+                            })
+
                         # Find OpenAI API keys
                         openai_matches = OPENAI_KEY_PATTERN.findall(line)
                         for match in openai_matches:
@@ -61,6 +76,47 @@ def scan_secrets(repo_dir: str) -> List[Dict]:
                                 "file": rel_path,
                                 "message": f"Potential OpenAI API Key leaked on line {line_num}: {match[:8]}..."
                             })
+
+                        # Find Stripe Live keys
+                        stripe_matches = STRIPE_KEY_PATTERN.findall(line)
+                        for match in stripe_matches:
+                            issues.append({
+                                "severity": "CRITICAL",
+                                "type": "LEAKED_SECRET",
+                                "file": rel_path,
+                                "message": f"Potential Stripe Live Secret Key leaked on line {line_num}: {match[:12]}..."
+                            })
+
+                        # Find Slack tokens
+                        slack_matches = SLACK_TOKEN_PATTERN.findall(line)
+                        for match in slack_matches:
+                            issues.append({
+                                "severity": "CRITICAL",
+                                "type": "LEAKED_SECRET",
+                                "file": rel_path,
+                                "message": f"Potential Slack Token leaked on line {line_num}: {match[:12]}..."
+                            })
+
+                        # Find GitHub personal access tokens
+                        github_matches = GITHUB_TOKEN_PATTERN.findall(line)
+                        for match in github_matches:
+                            issues.append({
+                                "severity": "CRITICAL",
+                                "type": "LEAKED_SECRET",
+                                "file": rel_path,
+                                "message": f"Potential GitHub Personal Access Token leaked on line {line_num}: {match[:12]}..."
+                            })
+
+                        # Find generic secrets in config/env files
+                        if file.endswith(('.env', '.cfg', '.ini', '.conf')) or 'config' in file.lower():
+                            generic_matches = GENERIC_SECRET_PATTERN.findall(line)
+                            for key, _ in generic_matches:
+                                issues.append({
+                                    "severity": "HIGH",
+                                    "type": "LEAKED_SECRET",
+                                    "file": rel_path,
+                                    "message": f"Potential hardcoded '{key}' value found on line {line_num}."
+                                })
             except Exception:
                 # Ignore files that can't be read (binary files, symlinks, etc.)
                 pass
