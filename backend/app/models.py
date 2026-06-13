@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Text, DateTime, Enum as SAEnum, UUID
+from sqlalchemy import Column, String, Integer, Text, DateTime, Enum as SAEnum
+from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 import enum
 
@@ -59,6 +60,7 @@ class Deployment(Base):
     # Security Scan results
     security_report = Column(Text, nullable=True)
     security_advice = Column(Text, nullable=True)
+    security_score = Column(Integer, nullable=True)  # 0–100
 
     # Logs
     logs = Column(Text, default="")

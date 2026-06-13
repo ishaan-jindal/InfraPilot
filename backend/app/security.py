@@ -3,11 +3,17 @@ import re
 import json
 from typing import List, Dict, Optional
 import requests
-import google.generativeai as genai
+from google import genai
+from app.config import OLLAMA_URL, OLLAMA_MODEL
 
 # Secret scanning regexes
 AWS_KEY_PATTERN = re.compile(r"AKIA[0-9A-Z]{16}")
+AWS_SECRET_PATTERN = re.compile(r"(?i)aws_secret_access_key\s*=\s*['\"]?([a-zA-Z0-9/+=]{40})['\"]?")
 OPENAI_KEY_PATTERN = re.compile(r"sk-[a-zA-Z0-9]{48}")
+STRIPE_KEY_PATTERN = re.compile(r"sk_live_[0-9a-zA-Z]{24}")
+SLACK_TOKEN_PATTERN = re.compile(r"xox[baprs]-[0-9]{12}-[0-9]{12}-[a-zA-Z0-9]{24}")
+GITHUB_TOKEN_PATTERN = re.compile(r"ghp_[a-zA-Z0-9]{36}")
+GENERIC_SECRET_PATTERN = re.compile(r"(?i)(password|secret|token|api_key)\s*=\s*['\"]?([a-zA-Z0-9\-_]{8,})['\"]?")
 
 def scan_secrets(repo_dir: str) -> List[Dict]:
     """
@@ -51,7 +57,17 @@ def scan_secrets(repo_dir: str) -> List[Dict]:
                                 "file": rel_path,
                                 "message": f"Potential AWS Access Key ID leaked on line {line_num}: {match[:8]}..."
                             })
-                            
+
+                        # Find AWS Secret Access Keys
+                        aws_secret_matches = AWS_SECRET_PATTERN.findall(line)
+                        for match in aws_secret_matches:
+                            issues.append({
+                                "severity": "CRITICAL",
+                                "type": "LEAKED_SECRET",
+                                "file": rel_path,
+                                "message": f"Potential AWS Secret Access Key leaked on line {line_num}."
+                            })
+
                         # Find OpenAI API keys
                         openai_matches = OPENAI_KEY_PATTERN.findall(line)
                         for match in openai_matches:
@@ -61,6 +77,47 @@ def scan_secrets(repo_dir: str) -> List[Dict]:
                                 "file": rel_path,
                                 "message": f"Potential OpenAI API Key leaked on line {line_num}: {match[:8]}..."
                             })
+
+                        # Find Stripe Live keys
+                        stripe_matches = STRIPE_KEY_PATTERN.findall(line)
+                        for match in stripe_matches:
+                            issues.append({
+                                "severity": "CRITICAL",
+                                "type": "LEAKED_SECRET",
+                                "file": rel_path,
+                                "message": f"Potential Stripe Live Secret Key leaked on line {line_num}: {match[:12]}..."
+                            })
+
+                        # Find Slack tokens
+                        slack_matches = SLACK_TOKEN_PATTERN.findall(line)
+                        for match in slack_matches:
+                            issues.append({
+                                "severity": "CRITICAL",
+                                "type": "LEAKED_SECRET",
+                                "file": rel_path,
+                                "message": f"Potential Slack Token leaked on line {line_num}: {match[:12]}..."
+                            })
+
+                        # Find GitHub personal access tokens
+                        github_matches = GITHUB_TOKEN_PATTERN.findall(line)
+                        for match in github_matches:
+                            issues.append({
+                                "severity": "CRITICAL",
+                                "type": "LEAKED_SECRET",
+                                "file": rel_path,
+                                "message": f"Potential GitHub Personal Access Token leaked on line {line_num}: {match[:12]}..."
+                            })
+
+                        # Find generic secrets in config/env files
+                        if file.endswith(('.env', '.cfg', '.ini', '.conf')) or 'config' in file.lower():
+                            generic_matches = GENERIC_SECRET_PATTERN.findall(line)
+                            for key, _ in generic_matches:
+                                issues.append({
+                                    "severity": "HIGH",
+                                    "type": "LEAKED_SECRET",
+                                    "file": rel_path,
+                                    "message": f"Potential hardcoded '{key}' value found on line {line_num}."
+                                })
             except Exception:
                 # Ignore files that can't be read (binary files, symlinks, etc.)
                 pass
@@ -120,14 +177,66 @@ def lint_dockerfile(dockerfile_content: str, expected_port: Optional[int] = None
     return issues
 
 
-def run_security_scan(repo_dir: str, dockerfile_content: str, expected_port: Optional[int] = None) -> List[Dict]:
+def run_security_scan(repo_dir: str, dockerfile_content: str = "", expected_port: Optional[int] = None) -> List[Dict]:
     """
     Runs both secret scanning and Dockerfile linting.
+    Handles a missing or empty Dockerfile gracefully.
     """
     findings = []
     findings.extend(scan_secrets(repo_dir))
-    findings.extend(lint_dockerfile(dockerfile_content, expected_port))
+    if dockerfile_content and dockerfile_content.strip():
+        findings.extend(lint_dockerfile(dockerfile_content, expected_port))
     return findings
+
+
+# ---------------------------------------------------------------------------
+# Security Score
+# ---------------------------------------------------------------------------
+
+# Points deducted per finding severity
+_SEVERITY_PENALTY = {
+    "CRITICAL": 25,
+    "HIGH": 15,
+    "MEDIUM": 5,
+    "LOW": 2,
+}
+
+def calculate_security_score(findings: List[Dict]) -> int:
+    """
+    Calculates a security score between 0 and 100.
+
+    Scoring logic:
+      Start at 100.
+      Deduct points per finding based on severity:
+        CRITICAL  → -25 per finding
+        HIGH      → -15 per finding
+        MEDIUM    →  -5 per finding
+        LOW       →  -2 per finding
+      Floor at 0.
+
+    Returns an integer score.
+    """
+    score = 100
+    for finding in findings:
+        severity = finding.get("severity", "LOW")
+        penalty = _SEVERITY_PENALTY.get(severity, 2)
+        score -= penalty
+    return max(0, score)
+
+
+def get_score_label(score: int) -> str:
+    """Returns a human-readable risk label for a given score."""
+    if score >= 90:
+        return "Excellent"
+    elif score >= 75:
+        return "Good"
+    elif score >= 50:
+        return "Fair"
+    elif score >= 25:
+        return "Poor"
+    else:
+        return "Critical Risk"
+
 
 
 def _generate_ollama_advice(prompt: str) -> str:
@@ -135,7 +244,6 @@ def _generate_ollama_advice(prompt: str) -> str:
     Sends the prompt to a local Ollama instance for generation.
     Returns the response string on success, or empty string on failure.
     """
-    from app.config import OLLAMA_URL, OLLAMA_MODEL
     url = f"{OLLAMA_URL.rstrip('/')}/api/generate"
     try:
         response = requests.post(
@@ -171,18 +279,19 @@ Be extremely specific, structured, and write your response in beautiful, clean M
 Use code blocks for commands or code changes, and separate your advice by file or issue.
 """
 
-    # 1. Try Gemini
+    # 1. Try Gemini (google-genai SDK)
     if api_key:
         try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(prompt)
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+            )
             return response.text
         except Exception:
             pass
 
     # 2. Try Ollama (Local LLM fallback)
-    from app.config import OLLAMA_MODEL
     ollama_advice = _generate_ollama_advice(prompt)
     if ollama_advice:
         return f"*(Generated by local Ollama model: {OLLAMA_MODEL})*\n\n" + ollama_advice

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import re
+import json
 import asyncio
 from typing import Optional
 from uuid import UUID
@@ -74,6 +75,9 @@ class DeploymentOut(BaseModel):
     host_port: int | None
     subdomain: str | None
     url: str | None
+    security_score: int | None
+    security_report: list | None
+    security_advice: str | None
     created_at: str | None
     updated_at: str | None
 
@@ -113,6 +117,14 @@ def _find_available_port(db: Session) -> int:
 
 def _to_out(dep: Deployment) -> dict:
     """Serialize a Deployment to a response dict."""
+    # security_report is stored as a JSON string in the DB (Text column)
+    report = []
+    if dep.security_report:
+        try:
+            report = json.loads(dep.security_report)
+        except Exception:
+            report = []
+
     return {
         "id": str(dep.id),
         "project_name": dep.project_name,
@@ -128,6 +140,9 @@ def _to_out(dep: Deployment) -> dict:
         "host_port": dep.host_port,
         "subdomain": dep.subdomain,
         "url": dep.url,
+        "security_score": dep.security_score,
+        "security_report": report,
+        "security_advice": dep.security_advice or "",
         "created_at": dep.created_at.isoformat() if dep.created_at else None,
         "updated_at": dep.updated_at.isoformat() if dep.updated_at else None,
     }
@@ -214,14 +229,19 @@ def run_deployment_pipeline(deployment_id: str, db_url: str):
         # --- Step 3.5: Run Security Scan ---
         _update_status(db, dep, DeploymentStatus.SCANNING)
         log("🛡️ Running Security Scan...")
-        
-        from app.security import run_security_scan, generate_remediation_advice
+
+        from app.security import run_security_scan, generate_remediation_advice, calculate_security_score, get_score_label
         from app.config import GEMINI_API_KEY
-        import json
 
         findings = run_security_scan(repo_dir, dockerfile, fw.port)
+        score = calculate_security_score(findings)
+        label = get_score_label(score)
+
         dep.security_report = json.dumps(findings)
+        dep.security_score = score
         db.commit()
+
+        log(f"📊 Security Score: {score}/100 — {label}")
 
         if findings:
             high_or_critical = any(f["severity"] in ("CRITICAL", "HIGH") for f in findings)
@@ -230,11 +250,14 @@ def run_deployment_pipeline(deployment_id: str, db_url: str):
                 log("🤖 Generating AI security advice...")
                 advice = generate_remediation_advice(findings, api_key=GEMINI_API_KEY)
                 dep.security_advice = advice
+                db.commit()
                 _update_status(db, dep, DeploymentStatus.AWAITING_APPROVAL)
-                log("🛑 Deployment paused. Please review advice and approve/redeploy to proceed.")
+                log("🛑 Deployment paused. Please review the security advice and approve to proceed.")
                 return
             else:
                 log(f"ℹ️ Security scan completed with {len(findings)} low/medium findings. Proceeding automatically.")
+                dep.security_advice = generate_remediation_advice(findings, api_key=GEMINI_API_KEY)
+                db.commit()
         else:
             log("✅ Security scan completed: No issues found.")
             dep.security_advice = None
@@ -511,10 +534,13 @@ def redeploy(
     if dep.container_name:
         stop_container(dep.container_name)
 
-    # Reset state
+    # Reset state — including stale security data from previous run
     dep.status = DeploymentStatus.PENDING
     dep.logs = ""
     dep.container_id = None
+    dep.security_report = None
+    dep.security_advice = None
+    dep.security_score = None
     db.commit()
 
     # Clear log broadcaster
@@ -628,3 +654,48 @@ def approve_deployment(
         "status": "pending",
         "message": "Deployment approved. Resuming build & deploy..."
     }
+
+
+@router.get("/deploy/{deployment_id}/security-report")
+def get_security_report(deployment_id: UUID, db: Session = Depends(get_db)):
+    """
+    Get a structured security scan report with severity summary and security score.
+    Used by the frontend to render the security dashboard card.
+    """
+    from app.security import get_score_label
+    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+    if not dep:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+
+    report = []
+    if dep.security_report:
+        try:
+            report = json.loads(dep.security_report)
+        except Exception:
+            report = []
+
+    critical = [v for v in report if v.get("severity") == "CRITICAL"]
+    high     = [v for v in report if v.get("severity") == "HIGH"]
+    medium   = [v for v in report if v.get("severity") == "MEDIUM"]
+    low      = [v for v in report if v.get("severity") == "LOW"]
+
+    score = dep.security_score
+    label = get_score_label(score) if score is not None else "Not scanned"
+
+    return {
+        "deployment_id": str(dep.id),
+        "project_name": dep.project_name,
+        "deployment_status": dep.status.value,
+        "security_score": score,
+        "score_label": label,
+        "total_issues": len(report),
+        "summary": {
+            "critical": len(critical),
+            "high": len(high),
+            "medium": len(medium),
+            "low": len(low),
+        },
+        "vulnerabilities": report,
+        "advice": dep.security_advice or "",
+    }
+
