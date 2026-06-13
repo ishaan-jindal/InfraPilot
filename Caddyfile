@@ -1,0 +1,9 @@
+# Frontend Dashboard
+{$FRONTEND_DOMAIN:infrapilot.localhost} {
+    reverse_proxy localhost:3000
+}
+
+# Backend API
+{$API_DOMAIN:api.infrapilot.localhost} {
+    reverse_proxy localhost:8000
+}

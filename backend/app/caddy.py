@@ -19,7 +19,7 @@ async def add_reverse_proxy(subdomain: str, target_port: int) -> bool:
     Uses Caddy's /config/ admin API endpoint.
     Returns True on success.
     """
-    hostname = f"{subdomain}.{BASE_DOMAIN}" if BASE_DOMAIN != "localhost" else subdomain
+    hostname = f"{subdomain}.{BASE_DOMAIN}"
 
     route = {
         "@id": f"infrapilot_{subdomain}",
@@ -43,8 +43,13 @@ async def add_reverse_proxy(subdomain: str, target_port: int) -> bool:
 
             if resp.status_code == 404:
                 # Server doesn't exist yet — create it with this route
+                # In production, listen on 80 and 443 to handle auto-HTTPS
+                listen_ports = [":80"]
+                if BASE_DOMAIN != "localhost":
+                    listen_ports.append(":443")
+
                 server_config = {
-                    "listen": [":80"],
+                    "listen": listen_ports,
                     "routes": [route],
                 }
                 resp = await client.put(

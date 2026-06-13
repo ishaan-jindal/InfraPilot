@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: infrapilot
+      POSTGRES_PASSWORD: infrapilot
+      POSTGRES_DB: infrapilot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432" # Bind only to localhost for security
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - DATABASE_URL=postgresql://infrapilot:infrapilot@localhost:5433/infrapilot
+      - BASE_DOMAIN=${BASE_DOMAIN:-infrapilot.ishaanjindal.tech}
+      - FRONTEND_URL=https://${FRONTEND_DOMAIN:-infrapilot.ishaanjindal.tech}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CADDY_API_URL=http://localhost:2019
+      - PORT_RANGE_START=${PORT_RANGE_START:-9000}
+      - PORT_RANGE_END=${PORT_RANGE_END:-9500}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backend/deployments:/app/deployments
+      - ./backend/repos:/app/repos
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_URL=https://${API_DOMAIN:-api.infrapilot.ishaanjindal.tech}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000" # Bind only to localhost for proxying
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      - FRONTEND_DOMAIN=${FRONTEND_DOMAIN:-infrapilot.ishaanjindal.tech}
+      - API_DOMAIN=${API_DOMAIN:-api.infrapilot.ishaanjindal.tech}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  pgdata:
+  caddy-data:
+  caddy-config:
