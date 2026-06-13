@@ -34,15 +34,26 @@ async def add_reverse_proxy(subdomain: str, target_port: int) -> bool:
 
     try:
         async with httpx.AsyncClient() as client:
-            # Try to append to existing server routes
+            # 1. Try to append to 'srv0' (default Caddyfile server)
+            resp = await client.post(
+                f"{CADDY_API_URL}/config/apps/http/servers/srv0/routes",
+                json=route,
+                timeout=10,
+            )
+            if resp.status_code in (200, 201):
+                return True
+
+            # 2. Try our custom 'infrapilot' server routes
             resp = await client.post(
                 f"{CADDY_API_URL}/config/apps/http/servers/infrapilot/routes",
                 json=route,
                 timeout=10,
             )
+            if resp.status_code in (200, 201):
+                return True
 
-            if resp.status_code == 404:
-                # Server doesn't exist yet — create it with this route
+            # 3. Create the server if neither exists
+            if resp.status_code in (404, 500):
                 # In production, listen on 80 and 443 to handle auto-HTTPS
                 listen_ports = [":80"]
                 if BASE_DOMAIN != "localhost":
@@ -57,8 +68,9 @@ async def add_reverse_proxy(subdomain: str, target_port: int) -> bool:
                     json=server_config,
                     timeout=10,
                 )
+                return resp.status_code in (200, 201)
 
-            return resp.status_code in (200, 201)
+            return False
 
     except httpx.ConnectError:
         # Caddy is not running — log but don't fail the deployment
