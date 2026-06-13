@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-display: var(--font-space-grotesk), sans-serif;
+  --font-body: var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+
+  --color-bg-main: var(--bg-main);
+  --color-surface: var(--surface);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-green: var(--accent-green);
+  --color-accent-coral: var(--accent-coral);
+  --color-accent-amber: var(--accent-amber);
+  --color-border: var(--border-color);
+}
+
+:root {
+  --bg-main: #FAFAFA;
+  --surface: #FFFFFF;
+  --text-primary: #09090B;
+  --text-secondary: #71717A;
+  --accent-blue: #2563EB;
+  --accent-green: #10B981;
+  --accent-coral: #EF4444;
+  --accent-amber: #F59E0B;
+  --border-color: #E4E4E7;
+}
+
+.dark {
+  --bg-main: #09090B;
+  --surface: #18181B;
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --accent-blue: #3B82F6;
+  --accent-green: #10B981;
+  --accent-coral: #EF4444;
+  --accent-amber: #F59E0B;
+  --border-color: #27272A;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Hide scrollbar for clean aesthetic */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
