@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Text, DateTime, Enum as SAEnum
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Integer, Text, DateTime, Enum as SAEnum, UUID
 from app.database import Base
 import enum
 
@@ -10,6 +9,8 @@ class DeploymentStatus(str, enum.Enum):
     PENDING = "pending"
     CLONING = "cloning"
     DETECTING = "detecting"
+    SCANNING = "scanning"
+    AWAITING_APPROVAL = "awaiting_approval"
     BUILDING = "building"
     STARTING = "starting"
     CONFIGURING_PROXY = "configuring_proxy"
@@ -54,6 +55,10 @@ class Deployment(Base):
     container_name = Column(String(255), nullable=True)
     subdomain = Column(String(255), nullable=True, unique=True)
     url = Column(String(512), nullable=True)
+
+    # Security Scan results
+    security_report = Column(Text, nullable=True)
+    security_advice = Column(Text, nullable=True)
 
     # Logs
     logs = Column(Text, default="")

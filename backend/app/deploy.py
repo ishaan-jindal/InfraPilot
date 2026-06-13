@@ -158,6 +158,10 @@ def run_deployment_pipeline(deployment_id: str, db_url: str):
       6. Configure reverse proxy
     """
     from app.database import SessionLocal
+    from uuid import UUID as PyUUID
+
+    if isinstance(deployment_id, str):
+        deployment_id = PyUUID(deployment_id)
 
     db = SessionLocal()
     dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
@@ -207,6 +211,35 @@ def run_deployment_pipeline(deployment_id: str, db_url: str):
         dockerfile = generate_dockerfile(fw.framework, repo_dir, fw.start_command)
         log("✅ Dockerfile ready")
 
+        # --- Step 3.5: Run Security Scan ---
+        _update_status(db, dep, DeploymentStatus.SCANNING)
+        log("🛡️ Running Security Scan...")
+        
+        from app.security import run_security_scan, generate_remediation_advice
+        from app.config import GEMINI_API_KEY
+        import json
+
+        findings = run_security_scan(repo_dir, dockerfile, fw.port)
+        dep.security_report = json.dumps(findings)
+        db.commit()
+
+        if findings:
+            high_or_critical = any(f["severity"] in ("CRITICAL", "HIGH") for f in findings)
+            if high_or_critical:
+                log(f"⚠️ Security scan completed with {len(findings)} findings. Potentially unsafe configuration detected!")
+                log("🤖 Generating AI security advice...")
+                advice = generate_remediation_advice(findings, api_key=GEMINI_API_KEY)
+                dep.security_advice = advice
+                _update_status(db, dep, DeploymentStatus.AWAITING_APPROVAL)
+                log("🛑 Deployment paused. Please review advice and approve/redeploy to proceed.")
+                return
+            else:
+                log(f"ℹ️ Security scan completed with {len(findings)} low/medium findings. Proceeding automatically.")
+        else:
+            log("✅ Security scan completed: No issues found.")
+            dep.security_advice = None
+            db.commit()
+
         # --- Step 4: Build Docker image ---
         _update_status(db, dep, DeploymentStatus.BUILDING)
         image_tag = f"infrapilot-{dep.project_name}:latest"
@@ -231,6 +264,104 @@ def run_deployment_pipeline(deployment_id: str, db_url: str):
             image_tag=image_tag,
             host_port=dep.host_port,
             container_port=fw.port,
+            container_name=container_name,
+            log_callback=log,
+        )
+
+        if not container_id:
+            _update_status(db, dep, DeploymentStatus.FAILED)
+            log("❌ Failed to start container")
+            return
+
+        dep.container_id = container_id
+        dep.container_name = container_name
+        db.commit()
+        log(f"✅ Container running: {container_id}")
+
+        # --- Step 6: Configure reverse proxy ---
+        _update_status(db, dep, DeploymentStatus.CONFIGURING_PROXY)
+        log(f"🌐 Configuring reverse proxy for {dep.subdomain}...")
+
+        # Run the async caddy call from the sync thread
+        loop = asyncio.new_event_loop()
+        proxy_ok = loop.run_until_complete(add_reverse_proxy(dep.subdomain, dep.host_port))
+        loop.close()
+
+        if proxy_ok:
+            log("✅ Reverse proxy configured")
+        else:
+            log("⚠️  Caddy not available — skipping reverse proxy (app still accessible via port)")
+
+        # --- Done ---
+        url = get_deployment_url(dep.subdomain)
+        dep.url = url
+        _update_status(db, dep, DeploymentStatus.RUNNING)
+        log(f"🎉 Deployment successful!")
+        log(f"   URL: {url}")
+        log(f"   Direct: http://localhost:{dep.host_port}")
+
+    except Exception as e:
+        _update_status(db, dep, DeploymentStatus.FAILED)
+        log(f"❌ Deployment failed: {str(e)}")
+    finally:
+        db.close()
+
+
+def resume_deployment_pipeline(deployment_id: str, db_url: str):
+    """
+    Resumes a gated deployment after manual approval.
+    Runs from Step 4 (Build Docker image) to the end.
+    """
+    from app.database import SessionLocal
+    from uuid import UUID as PyUUID
+
+    if isinstance(deployment_id, str):
+        deployment_id = PyUUID(deployment_id)
+
+    db = SessionLocal()
+    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+
+    if not dep:
+        return
+
+    dep_id_str = str(dep.id)
+
+    def log(msg: str):
+        log_sync(dep_id_str, msg)
+        dep.logs = (dep.logs or "") + msg + "\n"
+        db.commit()
+
+    try:
+        # Verify framework details are present
+        if not dep.framework:
+            raise RuntimeError("Missing framework details; cannot resume")
+
+        repo_dir = os.path.join(REPOS_BASE_DIR, dep.project_name)
+
+        # --- Step 4: Build Docker image ---
+        _update_status(db, dep, DeploymentStatus.BUILDING)
+        image_tag = f"infrapilot-{dep.project_name}:latest"
+        log(f"🔨 Resuming: Building Docker image: {image_tag}")
+
+        success = build_image(repo_dir, image_tag, log_callback=log)
+
+        if not success:
+            _update_status(db, dep, DeploymentStatus.FAILED)
+            log("❌ Docker build failed")
+            return
+
+        log("✅ Docker image built successfully")
+
+        # --- Step 5: Run container ---
+        _update_status(db, dep, DeploymentStatus.STARTING)
+        container_name = f"infrapilot-{dep.project_name}"
+        log(f"🚀 Starting container: {container_name}")
+        log(f"   Mapping port {dep.host_port} → {dep.port}")
+
+        container_id = run_container(
+            image_tag=image_tag,
+            host_port=dep.host_port,
+            container_port=dep.port,
             container_name=container_name,
             log_callback=log,
         )
@@ -440,4 +571,60 @@ def get_container_health(deployment_id: UUID, db: Session = Depends(get_db)):
         "deployment_id": str(dep.id),
         "deployment_status": dep.status.value,
         "container_status": status["status"],
+    }
+
+
+@router.get("/deploy/{deployment_id}/security-advisor")
+def get_security_advisor(deployment_id: UUID, db: Session = Depends(get_db)):
+    """Get security scan report and AI remediation advice."""
+    import json
+    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+    if not dep:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+        
+    report = []
+    if dep.security_report:
+        try:
+            report = json.loads(dep.security_report)
+        except Exception:
+            pass
+            
+    return {
+        "deployment_id": str(dep.id),
+        "status": dep.status.value,
+        "report": report,
+        "advice": dep.security_advice or ""
+    }
+
+
+@router.post("/deploy/{deployment_id}/approve")
+def approve_deployment(
+    deployment_id: UUID,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """Manually approve and resume a gated deployment."""
+    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+    if not dep:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+        
+    if dep.status != DeploymentStatus.AWAITING_APPROVAL:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Deployment cannot be approved in its current state: {dep.status.value}"
+        )
+        
+    # Reset status and resume execution in background
+    dep.status = DeploymentStatus.PENDING
+    db.commit()
+    
+    # Broadcast / Log resume action
+    log_sync(str(dep.id), "🚀 Deployment approved. Resuming pipeline...")
+    
+    background_tasks.add_task(resume_deployment_pipeline, str(dep.id), str(dep.id))
+    
+    return {
+        "deployment_id": str(dep.id),
+        "status": "pending",
+        "message": "Deployment approved. Resuming build & deploy..."
     }
