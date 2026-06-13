@@ -60,6 +60,7 @@ class Deployment(Base):
     # Security Scan results
     security_report = Column(Text, nullable=True)
     security_advice = Column(Text, nullable=True)
+    security_score = Column(Integer, nullable=True)  # 0–100
 
     # Logs
     logs = Column(Text, default="")

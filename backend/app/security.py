@@ -177,14 +177,66 @@ def lint_dockerfile(dockerfile_content: str, expected_port: Optional[int] = None
     return issues
 
 
-def run_security_scan(repo_dir: str, dockerfile_content: str, expected_port: Optional[int] = None) -> List[Dict]:
+def run_security_scan(repo_dir: str, dockerfile_content: str = "", expected_port: Optional[int] = None) -> List[Dict]:
     """
     Runs both secret scanning and Dockerfile linting.
+    Handles a missing or empty Dockerfile gracefully.
     """
     findings = []
     findings.extend(scan_secrets(repo_dir))
-    findings.extend(lint_dockerfile(dockerfile_content, expected_port))
+    if dockerfile_content and dockerfile_content.strip():
+        findings.extend(lint_dockerfile(dockerfile_content, expected_port))
     return findings
+
+
+# ---------------------------------------------------------------------------
+# Security Score
+# ---------------------------------------------------------------------------
+
+# Points deducted per finding severity
+_SEVERITY_PENALTY = {
+    "CRITICAL": 25,
+    "HIGH": 15,
+    "MEDIUM": 5,
+    "LOW": 2,
+}
+
+def calculate_security_score(findings: List[Dict]) -> int:
+    """
+    Calculates a security score between 0 and 100.
+
+    Scoring logic:
+      Start at 100.
+      Deduct points per finding based on severity:
+        CRITICAL  → -25 per finding
+        HIGH      → -15 per finding
+        MEDIUM    →  -5 per finding
+        LOW       →  -2 per finding
+      Floor at 0.
+
+    Returns an integer score.
+    """
+    score = 100
+    for finding in findings:
+        severity = finding.get("severity", "LOW")
+        penalty = _SEVERITY_PENALTY.get(severity, 2)
+        score -= penalty
+    return max(0, score)
+
+
+def get_score_label(score: int) -> str:
+    """Returns a human-readable risk label for a given score."""
+    if score >= 90:
+        return "Excellent"
+    elif score >= 75:
+        return "Good"
+    elif score >= 50:
+        return "Fair"
+    elif score >= 25:
+        return "Poor"
+    else:
+        return "Critical Risk"
+
 
 
 def _generate_ollama_advice(prompt: str) -> str:
