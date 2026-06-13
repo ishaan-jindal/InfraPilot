@@ -21,10 +21,10 @@ env/
 *.sqlite3
 
 # Docker
-deployments/
+/backend/deployments/
 
 # Cloned repos
-repos/
+/backend/repos/
 
 # IDE
 .vscode/
