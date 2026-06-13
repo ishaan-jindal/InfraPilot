@@ -1,303 +1,319 @@
 # InfraPilot
 
-### Deploy Anywhere.
+### Own Your Infrastructure. Verify Its Security.
 
-Deploy applications directly from GitHub to either managed infrastructure provided by InfraPilot or your own servers using a single unified deployment workflow.
+An AI-powered Secure Deployment Platform that prevents developers from shipping insecure infrastructure.
 
-**Managed Hosting + Bring Your Own Infrastructure in one platform.**
+InfraPilot analyzes repositories, audits infrastructure, identifies attack vectors, recommends fixes using AI, and then securely deploys applications to either managed infrastructure or the developer's own VPS.
 
----
-
-# Overview
-
-InfraPilot is a deployment platform that simplifies application hosting by providing a Vercel-like experience without locking users into a single infrastructure provider.
-
-Users can choose between:
-
-### Managed Hosting
-
-Deploy directly to infrastructure managed by InfraPilot.
-
-Ideal for:
-
-* Personal projects
-* Portfolios
-* Hackathon submissions
-* Rapid prototyping
-
-No server setup required.
+**Security is the product. Deployment is the action you take after validation.**
 
 ---
 
-### Bring Your Own Infrastructure (BYOI)
+# The Problem
 
-Deploy directly to infrastructure you already own.
+Developers deploy applications every day without knowing:
 
-Supported targets:
+- What ports are exposed
+- Whether secrets are leaking in code or git history
+- Whether SSH is hardened
+- Whether Docker is configured safely
+- Whether their application is publicly exposing vulnerabilities
 
-* Oracle Cloud
-* AWS EC2
-* DigitalOcean
-* Hetzner
-* Azure VMs
-* Home Labs
-* Raspberry Pi
-* Any Linux server with SSH access
-
-Ideal for:
-
-* Production workloads
-* Cost-conscious developers
-* Organizations requiring infrastructure ownership
+Modern deployment platforms make it easy to ship code — but none of them tell you if that code is **safe to ship**.
 
 ---
 
-# Problem
+### Managed Platforms (Vercel, Netlify, Railway)
 
-Modern deployment platforms are often split into two extremes.
+- Easy deployment
+- Great developer experience
+- **Zero visibility into security posture**
+- Vendor lock-in
 
-### Managed Platforms
+### Self-Hosted Infrastructure (VPS, EC2, Home Labs)
 
-Examples:
-
-* Vercel
-* Netlify
-* Railway
-
-Advantages:
-
-* Easy deployment
-* Great developer experience
-
-Limitations:
-
-* Vendor lock-in
-* Usage limits
-* Limited infrastructure control
+- Full ownership
+- Lower long-term costs
+- **Complex security configuration**
+- SSL, firewalls, SSH hardening left to the developer
 
 ---
 
-### Self-Hosted Infrastructure
-
-Advantages:
-
-* Full ownership
-* Lower long-term costs
-* Complete flexibility
-
-Limitations:
-
-* Complex setup
-* SSL management
-* Reverse proxy configuration
-* Deployment automation overhead
+Developers are forced to choose between convenience and control — and neither option tells them how exposed they are.
 
 ---
 
-Developers are forced to choose between convenience and control.
+# The Solution
+
+InfraPilot combines **security intelligence** with **deployment automation**.
+
+Users connect a GitHub repository. Before anything deploys, InfraPilot performs a full security audit and generates an actionable risk report.
 
 ---
 
-# Solution
+## Three Layers
 
-InfraPilot combines both approaches.
+### Layer 1 — Deployment Engine
 
-Users connect a GitHub repository and choose a deployment target.
+GitHub → Build → Deploy
 
-The deployment target can be:
+- Managed hosting (InfraPilot infrastructure)
+- Bring Your Own Infrastructure (any Linux server with SSH)
+- Automatic framework detection
+- Docker containerization
+- Caddy reverse proxy with auto-HTTPS
 
-### Option A — InfraPilot Managed Hosting
+### Layer 2 — Security Intelligence
 
-GitHub
+Continuous analysis across code, containers, and infrastructure:
 
-↓
+- Secret detection (API keys, credentials, tokens)
+- Dependency vulnerability scanning
+- Docker misconfiguration checks
+- SSH hardening validation
+- Open port analysis
+- HTTPS verification
+- Git history scanning for leaked credentials
 
-InfraPilot Build System
+### Layer 3 — Security Copilot (AI)
 
-↓
+AI-powered remediation that doesn't just find problems — it fixes them:
 
-Managed Runtime
-
-↓
-
-HTTPS Website
-
----
-
-### Option B — User Infrastructure
-
-GitHub
-
-↓
-
-InfraPilot Deployment Engine
-
-↓
-
-SSH Connection
-
-↓
-
-User VPS
-
-↓
-
-HTTPS Website
+- Explain risks in plain language
+- Prioritize fixes by severity
+- Generate remediation commands and configs
+- Simulate potential attack paths
 
 ---
 
-The deployment workflow remains identical regardless of infrastructure choice.
+# Core Workflow
 
-This provides:
+### Step 1 — Connect Repository
 
-* Simplicity of managed platforms
-* Flexibility of self-hosting
-* No infrastructure lock-in
-
----
-
-# Core Features
-
-## GitHub Integration
-
-* GitHub OAuth
-* Repository selection
-* Deployment history
-* Future support for automatic redeployments
+```
+github.com/user/project
+```
 
 ---
 
-## Automatic Framework Detection
+### Step 2 — Security Analysis
 
-InfraPilot analyzes repository structure and configuration files.
+AI + static analysis runs automatically.
 
-Supported frameworks:
+Checks:
 
-* Next.js
-* React
-* FastAPI
-* Django
-* Flask
-* Generic Docker projects
+- Hardcoded secrets in source and git history
+- Dangerous environment variables
+- Open ports
+- Missing HTTPS
+- Docker misconfigurations (root containers, exposed daemons)
+- Dependency vulnerabilities (CVE scanning)
+- Weak SSH configurations
 
-Detection is performed using static repository analysis rather than AI, ensuring predictable and reliable deployments.
+---
+
+### Step 3 — Infrastructure Risk Report
+
+```
+Security Score: 73/100
+
+CRITICAL
+  AWS key exposed in commit history
+
+HIGH
+  Container running as root
+  SSH password authentication enabled
+
+MEDIUM
+  Port 5432 publicly accessible
+  Outdated dependency: express 4.17 (CVE-2024-XXXX)
+
+LOW
+  Missing security headers (X-Frame-Options, CSP)
+```
 
 ---
 
-## Deployment Plan Generation
+### Step 4 — AI Security Advisor
 
-Before deployment, InfraPilot generates a deployment plan.
+Instead of "Deploy Now", InfraPilot shows:
 
-Example:
+```
+⚠ Security Check Required — Fix Before Deploying
 
-Framework:
-Next.js
+Recommended Actions:
 
-Build Command:
-npm run build
+  ✓ Rotate exposed AWS key and remove from git history
+  ✓ Add USER directive to Dockerfile (non-root)
+  ✓ Disable SSH password auth, enforce key-only
+  ✓ Restrict PostgreSQL to localhost or VPN
+  ✓ Upgrade express to 4.19+
+  ✓ Add security headers to reverse proxy config
+```
 
-Start Command:
-npm start
-
-Runtime:
-Docker
-
-Port:
-3000
-
-Deployment Target:
-Managed Infrastructure
-
-Status:
-Ready
+AI generates the exact commands, Dockerfile patches, and config changes needed.
 
 ---
+
+### Step 5 — Secure Deployment
+
+Deploy only after validation passes.
+
+Post-deployment monitoring:
+
+```
+Public Exposure Report
+
+  Open Ports: 80, 443
+  SSL: Valid (A+ rating)
+  SSH: Key-only, fail2ban active
+  Risk Level: Low
+
+  Security Score: 94/100
+```
+
+---
+
+# Key Features
+
+## Infrastructure Security Score
+
+A single metric that captures overall security posture — like a credit score for your infrastructure.
+
+```
+Security Score: 88/100
+
+  HTTPS              PASS
+  SSH Hardening       PASS
+  Firewall            PASS
+  Secrets Management  WARNING
+  Container Isolation PASS
+  Dependencies        PASS
+```
+
+---
+
+## Secret Leak Detection
+
+Scans source code, environment files, and full git history for exposed credentials:
+
+```
+DETECTED SECRETS
+
+  .env:3          AWS_SECRET_ACCESS_KEY=AKIA...
+  config.py:12    OPENAI_API_KEY=sk-...
+  git history     DATABASE_URL with password (commit a3f8c2)
+```
+
+Alerts before deployment. Blocks deploy if critical secrets are found.
+
+---
+
+## Docker Security Analyzer
+
+Inspects Dockerfiles and container configurations for common misconfigurations:
+
+- Running as root
+- Exposing unnecessary ports
+- Using `latest` tags (unpinned dependencies)
+- Missing health checks
+- Privileged mode enabled
+- Sensitive files copied into image
+
+---
+
+## AI Threat Simulator
+
+Ask: *"How could my server be attacked?"*
+
+```
+Potential Attack Paths:
+
+  1. Brute force SSH (password auth enabled, no fail2ban)
+  2. PostgreSQL exposed on 0.0.0.0:5432 (no firewall rule)
+  3. Leaked API key in git history (AWS account compromise)
+  4. Container escape via privileged mode
+  5. Dependency supply chain attack (3 outdated packages with known CVEs)
+```
+
+---
+
+## Infrastructure Footprint Map
+
+Understand exactly what your deployment exposes:
+
+```
+GitHub Repository
+        ↓
+Docker Container (node:20, port 3000)
+        ↓
+Reverse Proxy (Caddy, ports 80/443)
+        ↓
+Public Domain (myapp.infrapilot.dev)
+        ↓
+Open Ports: 22, 80, 443
+        ↓
+Connected Services: PostgreSQL, Redis, S3
+```
+
+---
+
+## Continuous Security Monitoring
+
+Post-deployment alerts when new vulnerabilities are discovered:
+
+```
+⚠ New Vulnerability Detected
+
+  Package:   express 4.18.2
+  CVE:       CVE-2024-XXXX
+  Severity:  High
+  Fix:       Upgrade to 4.19.0
+
+  [Auto-Fix & Redeploy]
+```
+
+---
+
+# Deployment Targets
 
 ## Managed Hosting
 
-Users can deploy directly to infrastructure provided by InfraPilot.
+Deploy to infrastructure managed by InfraPilot.
 
-Benefits:
-
-* No VPS required
-* Instant onboarding
-* Ideal for judges and demonstrations
-* Simplest deployment path
-
-Generated URL:
-
-https://my-app.infrapilot.dev
-
----
+- No VPS required
+- Instant onboarding
+- Automatic HTTPS
+- Generated URL: `https://my-app.infrapilot.dev`
 
 ## Bring Your Own Infrastructure
 
-Users can connect existing servers through SSH.
+Deploy to servers you already own via SSH.
 
-InfraPilot automatically:
+Supported targets:
 
-* Connects to server
-* Installs dependencies
-* Builds application
-* Starts containers
-* Configures HTTPS
-
-Benefits:
-
-* Full ownership
-* Lower hosting costs
-* Infrastructure flexibility
+- Oracle Cloud
+- AWS EC2
+- DigitalOcean
+- Hetzner
+- Azure VMs
+- Home Labs / Raspberry Pi
+- Any Linux server with SSH access
 
 ---
 
-## One-Click Deployments
+# Supported Frameworks
 
-InfraPilot automates:
+- Next.js
+- React
+- FastAPI
+- Flask
+- Django
+- Generic Docker projects
+- Static sites
 
-* Repository cloning
-* Dependency installation
-* Docker image creation
-* Container startup
-* Reverse proxy configuration
-* SSL provisioning
-* Health verification
-
----
-
-## Automatic HTTPS
-
-HTTPS is automatically configured using Caddy.
-
-No manual SSL configuration is required.
-
----
-
-## Live Deployment Logs
-
-Users can monitor deployment progress in real time.
-
-Example:
-
-Cloning repository...
-
-Installing dependencies...
-
-Building container...
-
-Configuring HTTPS...
-
-Deployment successful.
-
----
-
-## Deployment History
-
-Every deployment stores:
-
-* Timestamp
-* Commit hash
-* Deployment status
-* Deployment logs
+Framework detection is automatic via static analysis.
 
 ---
 
@@ -306,89 +322,69 @@ Every deployment stores:
 ```
                     GitHub
                        |
+              Security Analysis
+              (Secrets / CVEs / Docker / SSH)
                        |
-                Next.js Dashboard
+              Risk Report + AI Remediation
                        |
+                  Deployment Engine
                        |
-                    FastAPI
+     -----------------------------------
+     |                                 |
+  Managed Infrastructure      User Infrastructure
+     |                                 |
+   Docker                           Docker
+     |                                 |
+   Caddy (HTTPS)                  Caddy (HTTPS)
+     |                                 |
+     -----------------------------------
                        |
-    --------------------------------------
-    |                                    |
-    |                                    |
+              Continuous Monitoring
+              (Vulnerabilities / Exposure)
 ```
-
-Managed Infrastructure            User Infrastructure
-|                                    |
-|                                    |
-Docker                               Docker
-|                                    |
-|                                    |
-Caddy                                Caddy
-|                                    |
---------------------------------------
-|
-Live Website
-
----
-
-# Why This Is Different
-
-Most platforms force users into a specific infrastructure model.
-
-InfraPilot allows users to choose:
-
-* Deploy on our infrastructure
-* Deploy on their infrastructure
-
-while keeping the exact same deployment workflow.
-
-This removes vendor lock-in without sacrificing developer experience.
 
 ---
 
 # Hackathon MVP
 
-For the hackathon, InfraPilot will support:
+### Must Have
 
-### Managed Hosting
+- GitHub integration (OAuth + repo selection)
+- Deployment engine (clone → build → run)
+- Security Score (hero metric)
+- Secret scanner (source + env files)
+- Docker security analyzer
+- AI remediation suggestions
 
-Deploy applications directly on InfraPilot infrastructure with automatic subdomain generation.
+### Nice To Have
 
-Example:
+- Open port scanner
+- SSH hardening checks
+- Dependency vulnerability feed (CVE database)
+- Git history secret scanning
 
-https://demo.infrapilot.dev
+### Post-Hackathon
+
+- Multi-cloud support
+- Team management
+- Continuous monitoring
+- Auto-redeploy on push
+- Billing
 
 ---
 
-### VPS Deployments
+# Demo Pitch
 
-Deploy applications to user-owned servers via SSH.
-
-Supported examples:
-
-* Oracle Cloud VM
-* AWS EC2
-* DigitalOcean Droplet
-* Hetzner VPS
-
----
-
-### Supported Frameworks
-
-* Next.js
-* React
-* FastAPI
-* Flask
-* Django
-* Dockerized applications
+> Developers deploy applications every day without understanding the security risks they are exposing. InfraPilot analyzes repositories, audits infrastructure, identifies attack vectors, recommends fixes using AI, and then securely deploys applications to either our managed infrastructure or the developer's own VPS. We help developers take back control of their digital infrastructure.
 
 ---
 
 # Vision
 
-InfraPilot provides infrastructure freedom.
+InfraPilot is a **Cybersecurity Control Plane for Self-Hosted Infrastructure**.
 
-Developers should not have to choose between the simplicity of Vercel and the flexibility of self-hosted infrastructure.
+The deployment engine is how developers ship code. The security layer is why they choose InfraPilot over everything else.
 
-By unifying managed hosting and bring-your-own-infrastructure deployments into a single workflow, InfraPilot enables developers to deploy anywhere with minimal operational complexity.
+Every deployment is audited. Every risk is surfaced. Every fix is actionable.
 
+**Deploy anywhere. Deploy securely.**
