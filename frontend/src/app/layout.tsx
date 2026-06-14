@@ -1,17 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/ThemeProvider";
-
-if (typeof window !== "undefined") {
-  const originalWarn = console.warn;
-  console.warn = (...args) => {
-    if (typeof args[0] === "string" && args[0].includes("THREE.Clock: This module has been deprecated")) {
-      return;
-    }
-    originalWarn(...args);
-  };
-}
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -29,8 +18,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "InfraPilot | Deploy with eyes open",
-  description: "InfraPilot audits your repo and infrastructure for security risks, fixes what it can, and deploys you anywhere.",
+  title: "InfraPilot — Secure. Deploy. Own it.",
+  description: "InfraPilot audits your repo and infrastructure, scores your security posture out of 100, fixes what it can with AI, and deploys you anywhere — managed or self-hosted.",
 };
 
 export default function RootLayout({
@@ -39,18 +28,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body
         className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        {children}
       </body>
     </html>
   );

@@ -1,80 +1,69 @@
-"use client";
-
-import { ShieldX, ShieldCheck } from "lucide-react";
-import { motion } from "framer-motion";
-
-const problems = [
-  "Deploy first, hope for the best",
-  "No visibility into open ports or exposed secrets",
-  "Security is your problem after launch",
-];
-
-const solutions = [
-  "Audit before every deploy",
-  "Flags hardcoded secrets, open ports, missing HTTPS",
-  "AI-recommended fixes applied automatically where safe",
-];
-
 export default function ProblemSection() {
   return (
-    <section className="py-24 px-6 relative z-10" id="security">
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-[var(--color-text-primary)]">
-            Security blind spots in deployment
+    <section className="py-24 px-6 relative">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-12">
+          <span className="font-mono text-sm text-[var(--text-secondary)] mb-4 block">
+            // 01 — the problem
+          </span>
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-[var(--text-primary)] max-w-4xl leading-tight">
+            Modern deployment platforms make it easy to ship code — none of them tell you if that code is safe to ship.
           </h2>
-          <p className="text-[var(--color-text-secondary)] text-lg max-w-2xl mx-auto">
-            Most platforms just take your code and run it. InfraPilot ensures it's safe before it ever hits production.
-          </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            className="p-8 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm"
-          >
-            <div className="flex items-center gap-3 mb-8">
-              <div className="p-2 rounded-lg bg-[var(--color-bg-main)]">
-                <ShieldX className="w-6 h-6 text-[var(--color-text-secondary)]" />
-              </div>
-              <h3 className="font-display font-semibold text-xl text-[var(--color-text-secondary)]">What most platforms do</h3>
-            </div>
-            <ul className="space-y-6">
-              {problems.map((item, i) => (
-                <li key={i} className="flex gap-4 items-start text-[var(--color-text-secondary)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-text-secondary)] mt-2 opacity-50 shrink-0" />
-                  <span>{item}</span>
-                </li>
-              ))}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {/* Managed platforms card */}
+          <div className="bg-[#EFE9DC] border border-[var(--border-color)] p-8">
+            <h3 className="font-display font-bold text-xl mb-6">Managed platforms</h3>
+            <ul className="space-y-4">
+              <li className="flex items-start gap-3 text-[var(--text-secondary)]">
+                <span className="text-green-600 font-bold">✓</span>
+                Easy deployment
+              </li>
+              <li className="flex items-start gap-3 text-[var(--text-secondary)]">
+                <span className="text-green-600 font-bold">✓</span>
+                Great developer experience
+              </li>
+              <li className="flex items-start gap-3 text-[var(--text-secondary)]">
+                <span className="text-red-500 font-bold">✕</span>
+                Zero visibility into security posture
+              </li>
+              <li className="flex items-start gap-3 text-[var(--text-secondary)]">
+                <span className="text-red-500 font-bold">✕</span>
+                Vendor lock-in
+              </li>
             </ul>
-          </motion.div>
+          </div>
 
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ delay: 0.1 }}
-            className="p-8 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-accent-blue)]/30 shadow-[0_0_30px_rgba(45,91,255,0.05)] relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--color-accent-blue)]/5 blur-[100px] rounded-full pointer-events-none" />
-            
-            <div className="flex items-center gap-3 mb-8 relative">
-              <div className="p-2 rounded-lg bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue)]">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <h3 className="font-display font-semibold text-xl text-[var(--color-text-primary)]">What InfraPilot does</h3>
-            </div>
-            <ul className="space-y-6 relative">
-              {solutions.map((item, i) => (
-                <li key={i} className="flex gap-4 items-start text-[var(--color-text-primary)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent-blue)] mt-2 shrink-0" />
-                  <span>{item}</span>
-                </li>
-              ))}
+          {/* Self-hosted card */}
+          <div className="bg-[#EFE9DC] border border-[var(--border-color)] p-8">
+            <h3 className="font-display font-bold text-xl mb-6">Self-hosted infrastructure</h3>
+            <ul className="space-y-4">
+              <li className="flex items-start gap-3 text-[var(--text-secondary)]">
+                <span className="text-green-600 font-bold">✓</span>
+                Full ownership
+              </li>
+              <li className="flex items-start gap-3 text-[var(--text-secondary)]">
+                <span className="text-green-600 font-bold">✓</span>
+                Lower long-term costs
+              </li>
+              <li className="flex items-start gap-3 text-[var(--text-secondary)]">
+                <span className="text-red-500 font-bold">✕</span>
+                Complex security configuration
+              </li>
+              <li className="flex items-start gap-3 text-[var(--text-secondary)]">
+                <span className="text-red-500 font-bold">✕</span>
+                SSL, firewalls, SSH left to the developer
+              </li>
             </ul>
-          </motion.div>
+          </div>
+        </div>
+
+        {/* Bottom Statement */}
+        <div className="bg-white border border-[var(--border-color)] p-8 text-center max-w-3xl mx-auto">
+          <p className="font-display font-bold text-xl text-[var(--text-primary)]">
+            Neither option tells you how exposed you are. <span className="text-[var(--accent-indigo)]">InfraPilot does — before you deploy.</span>
+          </p>
         </div>
       </div>
     </section>

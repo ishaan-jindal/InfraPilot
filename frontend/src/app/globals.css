@@ -11,35 +11,50 @@
   --color-surface: var(--surface);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
-  --color-accent-blue: var(--accent-blue);
-  --color-accent-green: var(--accent-green);
-  --color-accent-coral: var(--accent-coral);
-  --color-accent-amber: var(--accent-amber);
   --color-border: var(--border-color);
+  
+  --color-accent-indigo: var(--accent-indigo);
+  --color-severity-critical: var(--severity-critical);
+  --color-severity-critical-bg: var(--severity-critical-bg);
+  --color-severity-high: var(--severity-high);
+  --color-severity-high-bg: var(--severity-high-bg);
+  --color-severity-high-text: var(--severity-high-text);
+  --color-severity-pass: var(--severity-pass);
+  --color-severity-pass-bg: var(--severity-pass-bg);
+  --color-severity-medium: var(--severity-medium);
+  --color-severity-medium-bg: var(--severity-medium-bg);
+  --color-severity-medium-text: var(--severity-medium-text);
 }
 
 :root {
-  --bg-main: #FAFAFA;
+  --bg-main: #F5F1E8;
   --surface: #FFFFFF;
-  --text-primary: #09090B;
-  --text-secondary: #71717A;
-  --accent-blue: #2563EB;
-  --accent-green: #10B981;
-  --accent-coral: #EF4444;
-  --accent-amber: #F59E0B;
-  --border-color: #E4E4E7;
+  --text-primary: #1A1A1A;
+  --text-secondary: #6F6A5E;
+  --border-color: #D6CFC2;
+  
+  --accent-indigo: #3D5AFE;
+  
+  --severity-critical: #E63946;
+  --severity-critical-bg: #FDEAEA;
+  --severity-high: #F4A261;
+  --severity-high-bg: #FDF1E5;
+  --severity-high-text: #C46A2E;
+  --severity-pass: #2A9D8F;
+  --severity-pass-bg: #E6F4F2;
+  --severity-medium: #E9C46A;
+  --severity-medium-bg: #FBF3DD;
+  --severity-medium-text: #9A7B1F;
 }
 
-.dark {
-  --bg-main: #09090B;
-  --surface: #18181B;
-  --text-primary: #FAFAFA;
-  --text-secondary: #A1A1AA;
-  --accent-blue: #3B82F6;
-  --accent-green: #10B981;
-  --accent-coral: #EF4444;
-  --accent-amber: #F59E0B;
-  --border-color: #27272A;
+/* Texture detail */
+.bg-scan-grid {
+  background-image: radial-gradient(var(--border-color) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
