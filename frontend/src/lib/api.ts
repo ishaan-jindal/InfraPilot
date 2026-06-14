@@ -10,6 +10,7 @@ import type {
   SecurityAdvisorResponse,
   DeleteDeploymentResponse,
 } from "./types";
+import { getToken } from "./auth";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -25,9 +26,19 @@ class ApiError extends Error {
 }
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = { 
+    "Content-Type": "application/json", 
+    ...opts?.headers as Record<string, string> 
+  };
+  
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API}${path}`, {
     ...opts,
-    headers: { "Content-Type": "application/json", ...opts?.headers },
+    headers,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
@@ -150,6 +161,10 @@ export async function approveDeployment(id: string): Promise<DeployResponse> {
 /* ── WebSocket ──────────────────────────────────────────────────────── */
 
 export function createLogSocket(deploymentId: string): WebSocket {
+  const token = getToken();
   const wsBase = API.replace(/^http/, "ws");
-  return new WebSocket(`${wsBase}/ws/logs/${deploymentId}`);
+  const wsUrl = token 
+    ? `${wsBase}/ws/logs/${deploymentId}?token=${encodeURIComponent(token)}`
+    : `${wsBase}/ws/logs/${deploymentId}`;
+  return new WebSocket(wsUrl);
 }

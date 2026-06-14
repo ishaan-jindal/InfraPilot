@@ -21,3 +21,12 @@ def create_tables():
     """Create all tables defined by models that inherit from Base."""
     from app import models  # noqa: F401 — ensures models are registered
     Base.metadata.create_all(bind=engine)
+
+    # Auto-migration: ensure github_user column exists
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE deployments ADD COLUMN IF NOT EXISTS github_user VARCHAR(255);"))
+            conn.commit()
+        except Exception:
+            pass

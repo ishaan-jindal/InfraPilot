@@ -56,6 +56,7 @@ class Deployment(Base):
     container_name = Column(String(255), nullable=True)
     subdomain = Column(String(255), nullable=True, unique=True)
     url = Column(String(512), nullable=True)
+    github_user = Column(String(255), nullable=True, index=True)
 
     # Security Scan results
     security_report = Column(Text, nullable=True)

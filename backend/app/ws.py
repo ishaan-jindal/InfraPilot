@@ -83,9 +83,41 @@ def log_sync(deployment_id: str, line: str) -> None:
         pass
 
 
+from app.database import SessionLocal
+from app.models import Deployment
+from app.auth import get_github_username
+from uuid import UUID
+
 @router.websocket("/ws/logs/{deployment_id}")
-async def websocket_logs(websocket: WebSocket, deployment_id: str):
-    """WebSocket endpoint for streaming deployment logs."""
+async def websocket_logs(websocket: WebSocket, deployment_id: str, token: str | None = None):
+    """WebSocket endpoint for streaming deployment logs (authenticated)."""
+    if not token:
+        await websocket.close(code=1008, reason="Missing authentication token")
+        return
+
+    try:
+        current_user = await get_github_username(token)
+    except Exception:
+        await websocket.close(code=1008, reason="Invalid or expired authentication token")
+        return
+
+    # Verify ownership
+    db = SessionLocal()
+    try:
+        dep_uuid = UUID(deployment_id)
+        dep = db.query(Deployment).filter(Deployment.id == dep_uuid).first()
+        if not dep:
+            await websocket.close(code=1008, reason="Deployment not found")
+            return
+        if dep.github_user != current_user:
+            await websocket.close(code=1008, reason="Access denied: You do not own this deployment")
+            return
+    except Exception:
+        await websocket.close(code=1008, reason="Invalid deployment ID")
+        return
+    finally:
+        db.close()
+
     broadcaster = get_broadcaster(deployment_id)
     await broadcaster.connect(websocket)
     try:

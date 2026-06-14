@@ -35,6 +35,7 @@ from app.detector import detect_framework
 from app.docker_utils import generate_dockerfile, build_image, run_container, stop_container, get_container_status
 from app.caddy import add_reverse_proxy, remove_reverse_proxy, get_deployment_url
 from app.ws import get_broadcaster, log_sync, remove_broadcaster
+from app.auth import get_current_user
 
 router = APIRouter()
 
@@ -113,6 +114,16 @@ def _find_available_port(db: Session) -> int:
             return port
 
     raise RuntimeError("No available ports in the configured range")
+
+
+def _get_owned_deployment(db: Session, deployment_id: UUID, current_user: str) -> Deployment:
+    """Helper to fetch a deployment and verify ownership."""
+    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+    if not dep:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    if dep.github_user != current_user:
+        raise HTTPException(status_code=403, detail="Access denied: You do not own this deployment")
+    return dep
 
 
 def _to_out(dep: Deployment) -> dict:
@@ -437,6 +448,7 @@ def deploy(
     req: DeployRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user),
 ):
     """Kick off a new managed deployment."""
     project_name = _sanitize_project_name(req.project_name)
@@ -454,6 +466,7 @@ def deploy(
         target=DeploymentTarget.MANAGED,
         host_port=host_port,
         subdomain=subdomain,
+        github_user=current_user,
     )
     db.add(dep)
     db.commit()
@@ -475,16 +488,18 @@ def list_deployments(
     skip: int = 0,
     limit: int = 20,
     db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user),
 ):
-    """List all deployments, most recent first."""
+    """List all deployments belonging to the current user, most recent first."""
     deps = (
         db.query(Deployment)
+        .filter(Deployment.github_user == current_user)
         .order_by(desc(Deployment.created_at))
         .offset(skip)
         .limit(limit)
         .all()
     )
-    total = db.query(Deployment).count()
+    total = db.query(Deployment).filter(Deployment.github_user == current_user).count()
 
     return {
         "total": total,
@@ -493,20 +508,24 @@ def list_deployments(
 
 
 @router.get("/deploy/{deployment_id}")
-def get_deployment(deployment_id: UUID, db: Session = Depends(get_db)):
+def get_deployment(
+    deployment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
     """Get full deployment details."""
-    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
-    if not dep:
-        raise HTTPException(status_code=404, detail="Deployment not found")
+    dep = _get_owned_deployment(db, deployment_id, current_user)
     return _to_out(dep)
 
 
 @router.get("/deploy/{deployment_id}/logs")
-def get_deployment_logs(deployment_id: UUID, db: Session = Depends(get_db)):
+def get_deployment_logs(
+    deployment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
     """Get deployment logs."""
-    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
-    if not dep:
-        raise HTTPException(status_code=404, detail="Deployment not found")
+    dep = _get_owned_deployment(db, deployment_id, current_user)
 
     # Merge DB logs with any in-memory buffer
     broadcaster = get_broadcaster(str(dep.id))
@@ -524,11 +543,10 @@ def redeploy(
     deployment_id: UUID,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user),
 ):
     """Redeploy an existing deployment (re-clone, re-build, re-run)."""
-    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
-    if not dep:
-        raise HTTPException(status_code=404, detail="Deployment not found")
+    dep = _get_owned_deployment(db, deployment_id, current_user)
 
     # Stop existing container if running
     if dep.container_name:
@@ -557,11 +575,13 @@ def redeploy(
 
 
 @router.delete("/deploy/{deployment_id}")
-def delete_deployment(deployment_id: UUID, db: Session = Depends(get_db)):
+def delete_deployment(
+    deployment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
     """Stop container, remove reverse proxy, and mark deployment as stopped."""
-    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
-    if not dep:
-        raise HTTPException(status_code=404, detail="Deployment not found")
+    dep = _get_owned_deployment(db, deployment_id, current_user)
 
     # Stop container
     if dep.container_name:
@@ -583,11 +603,13 @@ def delete_deployment(deployment_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/deploy/{deployment_id}/status")
-def get_container_health(deployment_id: UUID, db: Session = Depends(get_db)):
+def get_container_health(
+    deployment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
     """Check the live container status for a deployment."""
-    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
-    if not dep:
-        raise HTTPException(status_code=404, detail="Deployment not found")
+    dep = _get_owned_deployment(db, deployment_id, current_user)
 
     if not dep.container_name:
         return {"deployment_id": str(dep.id), "container_status": "no_container"}
@@ -601,12 +623,14 @@ def get_container_health(deployment_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/deploy/{deployment_id}/security-advisor")
-def get_security_advisor(deployment_id: UUID, db: Session = Depends(get_db)):
+def get_security_advisor(
+    deployment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
     """Get security scan report and AI remediation advice."""
     import json
-    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
-    if not dep:
-        raise HTTPException(status_code=404, detail="Deployment not found")
+    dep = _get_owned_deployment(db, deployment_id, current_user)
         
     report = []
     if dep.security_report:
@@ -627,12 +651,11 @@ def get_security_advisor(deployment_id: UUID, db: Session = Depends(get_db)):
 def approve_deployment(
     deployment_id: UUID,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user),
 ):
     """Manually approve and resume a gated deployment."""
-    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
-    if not dep:
-        raise HTTPException(status_code=404, detail="Deployment not found")
+    dep = _get_owned_deployment(db, deployment_id, current_user)
         
     if dep.status != DeploymentStatus.AWAITING_APPROVAL:
         raise HTTPException(
@@ -657,15 +680,17 @@ def approve_deployment(
 
 
 @router.get("/deploy/{deployment_id}/security-report")
-def get_security_report(deployment_id: UUID, db: Session = Depends(get_db)):
+def get_security_report(
+    deployment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
     """
     Get a structured security scan report with severity summary and security score.
     Used by the frontend to render the security dashboard card.
     """
     from app.security import get_score_label
-    dep = db.query(Deployment).filter(Deployment.id == deployment_id).first()
-    if not dep:
-        raise HTTPException(status_code=404, detail="Deployment not found")
+    dep = _get_owned_deployment(db, deployment_id, current_user)
 
     report = []
     if dep.security_report:
