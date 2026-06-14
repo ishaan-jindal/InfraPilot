@@ -54,15 +54,15 @@ export default function DeploymentPipeline({ status }: { status: DeploymentStatu
           else if (i === currentIdx && !isFailed && !isStopped) state = "active";
 
           const colors = {
-            done: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30",
-            active: "text-blue-400 bg-blue-400/10 border-blue-400/30",
-            waiting: "text-zinc-600 bg-zinc-800/30 border-zinc-700/30",
-            failed: "text-red-400 bg-red-400/10 border-red-400/30",
-            approval: "text-orange-400 bg-orange-400/10 border-orange-400/30",
+            done: "text-[var(--color-severity-pass)] bg-[var(--color-severity-pass-bg)] border-[var(--color-severity-pass)]/30",
+            active: "text-[var(--color-accent-blue)] bg-[var(--color-accent-blue)]/10 border-[var(--color-accent-blue)]/30",
+            waiting: "text-[var(--color-text-secondary)] bg-[var(--color-surface)] border-[var(--color-border)]",
+            failed: "text-[var(--color-severity-critical)] bg-[var(--color-severity-critical-bg)] border-[var(--color-severity-critical)]/30",
+            approval: "text-[var(--color-severity-high-text)] bg-[var(--color-severity-high-bg)] border-[var(--color-severity-high)]/30",
           };
 
           const lineColor =
-            i < currentIdx ? "bg-emerald-400/40" : "bg-zinc-700/40";
+            i < currentIdx ? "bg-[var(--color-severity-pass)]/40" : "bg-[var(--color-border)]/60";
 
           return (
             <div key={step} className="flex items-center flex-1 min-w-0">
@@ -79,8 +79,8 @@ export default function DeploymentPipeline({ status }: { status: DeploymentStatu
                     <div className="relative">
                       <Icon className="w-4 h-4" />
                       <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-400" />
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-accent-blue)] opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-accent-blue)]" />
                       </span>
                     </div>
                   ) : (
@@ -89,7 +89,7 @@ export default function DeploymentPipeline({ status }: { status: DeploymentStatu
                 </div>
                 <span
                   className={`text-[10px] font-medium ${
-                    state === "waiting" ? "text-zinc-600" : state === "failed" ? "text-red-400" : state === "approval" ? "text-orange-400" : state === "done" ? "text-emerald-400" : "text-blue-400"
+                    state === "waiting" ? "text-[var(--color-text-secondary)]" : state === "failed" ? "text-[var(--color-severity-critical)]" : state === "approval" ? "text-[var(--color-severity-high-text)]" : state === "done" ? "text-[var(--color-severity-pass)]" : "text-[var(--color-accent-blue)]"
                   }`}
                 >
                   {meta.label}

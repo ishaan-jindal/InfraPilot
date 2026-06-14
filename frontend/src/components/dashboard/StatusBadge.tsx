@@ -6,17 +6,17 @@ const CONFIG: Record<
   DeploymentStatus,
   { label: string; color: string; bg: string; pulse?: boolean }
 > = {
-  pending:            { label: "Pending",      color: "text-zinc-400",          bg: "bg-zinc-400/10"  },
-  cloning:            { label: "Cloning",      color: "text-blue-400",          bg: "bg-blue-400/10", pulse: true },
-  detecting:          { label: "Detecting",    color: "text-blue-400",          bg: "bg-blue-400/10", pulse: true },
-  scanning:           { label: "Scanning",     color: "text-amber-400",         bg: "bg-amber-400/10", pulse: true },
-  awaiting_approval:  { label: "Needs Approval", color: "text-orange-400",      bg: "bg-orange-400/10" },
-  building:           { label: "Building",     color: "text-violet-400",        bg: "bg-violet-400/10", pulse: true },
-  starting:           { label: "Starting",     color: "text-cyan-400",          bg: "bg-cyan-400/10", pulse: true },
-  configuring_proxy:  { label: "Configuring",  color: "text-cyan-400",          bg: "bg-cyan-400/10", pulse: true },
-  running:            { label: "Running",      color: "text-emerald-400",       bg: "bg-emerald-400/10" },
-  failed:             { label: "Failed",       color: "text-red-400",           bg: "bg-red-400/10" },
-  stopped:            { label: "Stopped",      color: "text-zinc-500",          bg: "bg-zinc-500/10" },
+  pending:            { label: "Pending",      color: "text-[var(--color-text-secondary)]",     bg: "bg-[var(--color-border)]/20"  },
+  cloning:            { label: "Cloning",      color: "text-[var(--color-accent-blue)]",        bg: "bg-[var(--color-accent-blue)]/10", pulse: true },
+  detecting:          { label: "Detecting",    color: "text-[var(--color-accent-blue)]",        bg: "bg-[var(--color-accent-blue)]/10", pulse: true },
+  scanning:           { label: "Scanning",     color: "text-[var(--color-severity-medium-text)]", bg: "bg-[var(--color-severity-medium-bg)]", pulse: true },
+  awaiting_approval:  { label: "Needs Approval", color: "text-[var(--color-severity-high-text)]", bg: "bg-[var(--color-severity-high-bg)]" },
+  building:           { label: "Building",     color: "text-[var(--color-accent-blue)]",        bg: "bg-[var(--color-accent-blue)]/10", pulse: true },
+  starting:           { label: "Starting",     color: "text-[var(--color-accent-blue)]",        bg: "bg-[var(--color-accent-blue)]/10", pulse: true },
+  configuring_proxy:  { label: "Configuring",  color: "text-[var(--color-accent-blue)]",        bg: "bg-[var(--color-accent-blue)]/10", pulse: true },
+  running:            { label: "Running",      color: "text-[var(--color-severity-pass)]",      bg: "bg-[var(--color-severity-pass-bg)]" },
+  failed:             { label: "Failed",       color: "text-[var(--color-severity-critical)]",  bg: "bg-[var(--color-severity-critical-bg)]" },
+  stopped:            { label: "Stopped",      color: "text-[var(--color-text-secondary)]",     bg: "bg-[var(--color-border)]/20" },
 };
 
 export default function StatusBadge({ status }: { status: DeploymentStatus }) {

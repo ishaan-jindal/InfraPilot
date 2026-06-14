@@ -14,6 +14,10 @@
   --color-border: var(--border-color);
   
   --color-accent-indigo: var(--accent-indigo);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-coral: var(--accent-coral);
+  --color-accent-green: var(--accent-green);
+
   --color-severity-critical: var(--severity-critical);
   --color-severity-critical-bg: var(--severity-critical-bg);
   --color-severity-high: var(--severity-high);
@@ -34,6 +38,9 @@
   --border-color: #D6CFC2;
   
   --accent-indigo: #3D5AFE;
+  --accent-blue: #3D5AFE;
+  --accent-coral: #E63946;
+  --accent-green: #2A9D8F;
   
   --severity-critical: #E63946;
   --severity-critical-bg: #FDEAEA;

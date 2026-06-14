@@ -183,9 +183,9 @@ function DeployWizard() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-lg border border-red-400/20 bg-red-400/5 p-4 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-            <p className="text-sm text-red-400">{error}</p>
+          <div className="rounded-lg border border-[var(--color-severity-critical)]/20 bg-[var(--color-severity-critical-bg)] p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-[var(--color-severity-critical)] shrink-0" />
+            <p className="text-sm text-[var(--color-severity-critical)]">{error}</p>
           </div>
         )}
 

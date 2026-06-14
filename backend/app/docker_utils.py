@@ -23,10 +23,11 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=node:node /app/.next ./.next
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/package.json ./package.json
+COPY --from=builder --chown=node:node /app/public ./public
+USER node
 EXPOSE 3000
 CMD ["npm", "start"]
 """,
@@ -42,7 +43,8 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 RUN npm install -g serve
-COPY --from=builder /app/build ./build
+COPY --from=builder --chown=node:node /app/build ./build
+USER node
 EXPOSE 3000
 CMD ["serve", "-s", "build", "-l", "3000"]
 """,
@@ -58,7 +60,8 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 RUN npm install -g serve
-COPY --from=builder /app/dist ./dist
+COPY --from=builder --chown=node:node /app/dist ./dist
+USER node
 EXPOSE 3000
 CMD ["serve", "-s", "dist", "-l", "3000"]
 """,
@@ -66,9 +69,11 @@ CMD ["serve", "-s", "dist", "-l", "3000"]
     "fastapi": """\
 FROM python:3.12-slim
 WORKDIR /app
-COPY requirements.txt* pyproject.toml* ./
+RUN groupadd -g 10001 appuser && useradd -r -u 10001 -g appuser appuser
+COPY --chown=appuser:appuser requirements.txt* pyproject.toml* ./
 RUN pip install --no-cache-dir -r requirements.txt 2>/dev/null || pip install --no-cache-dir . 2>/dev/null || true
-COPY . .
+COPY --chown=appuser:appuser . .
+USER appuser
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 """,
@@ -76,10 +81,12 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
     "flask": """\
 FROM python:3.12-slim
 WORKDIR /app
-COPY requirements.txt* pyproject.toml* ./
+RUN groupadd -g 10001 appuser && useradd -r -u 10001 -g appuser appuser
+COPY --chown=appuser:appuser requirements.txt* pyproject.toml* ./
 RUN pip install --no-cache-dir -r requirements.txt 2>/dev/null || pip install --no-cache-dir . 2>/dev/null || true
 RUN pip install --no-cache-dir gunicorn
-COPY . .
+COPY --chown=appuser:appuser . .
+USER appuser
 EXPOSE 5000
 CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
 """,
@@ -87,11 +94,13 @@ CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
     "django": """\
 FROM python:3.12-slim
 WORKDIR /app
-COPY requirements.txt* pyproject.toml* ./
+RUN groupadd -g 10001 appuser && useradd -r -u 10001 -g appuser appuser
+COPY --chown=appuser:appuser requirements.txt* pyproject.toml* ./
 RUN pip install --no-cache-dir -r requirements.txt 2>/dev/null || pip install --no-cache-dir . 2>/dev/null || true
 RUN pip install --no-cache-dir gunicorn
-COPY . .
+COPY --chown=appuser:appuser . .
 RUN python manage.py collectstatic --noinput 2>/dev/null || true
+USER appuser
 EXPOSE 8000
 CMD ["gunicorn", "-b", "0.0.0.0:8000", "config.wsgi"]
 """,
@@ -99,9 +108,10 @@ CMD ["gunicorn", "-b", "0.0.0.0:8000", "config.wsgi"]
     "node": """\
 FROM node:20-alpine
 WORKDIR /app
-COPY package*.json ./
+COPY --chown=node:node package*.json ./
 RUN npm ci --production
-COPY . .
+COPY --chown=node:node . .
+USER node
 EXPOSE 3000
 CMD ["npm", "start"]
 """,
@@ -110,7 +120,8 @@ CMD ["npm", "start"]
 FROM node:20-alpine
 WORKDIR /app
 RUN npm install -g serve
-COPY . .
+COPY --chown=node:node . .
+USER node
 EXPOSE 3000
 CMD ["serve", "-s", ".", "-l", "3000"]
 """,

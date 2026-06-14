@@ -11,23 +11,23 @@ interface SecurityReportProps {
 const SEVERITY_CONFIG = {
   CRITICAL: {
     icon: ShieldX,
-    color: "text-red-400",
-    bg: "bg-red-400/10",
-    border: "border-red-400/20",
+    color: "text-[var(--color-severity-critical)]",
+    bg: "bg-[var(--color-severity-critical-bg)]",
+    border: "border-[var(--color-severity-critical)]/20",
     label: "Critical",
   },
   HIGH: {
     icon: ShieldAlert,
-    color: "text-orange-400",
-    bg: "bg-orange-400/10",
-    border: "border-orange-400/20",
+    color: "text-[var(--color-severity-high-text)]",
+    bg: "bg-[var(--color-severity-high-bg)]",
+    border: "border-[var(--color-severity-high)]/20",
     label: "High",
   },
   MEDIUM: {
     icon: AlertTriangle,
-    color: "text-amber-400",
-    bg: "bg-amber-400/10",
-    border: "border-amber-400/20",
+    color: "text-[var(--color-severity-medium-text)]",
+    bg: "bg-[var(--color-severity-medium-bg)]",
+    border: "border-[var(--color-severity-medium)]/20",
     label: "Medium",
   },
 };
@@ -35,10 +35,10 @@ const SEVERITY_CONFIG = {
 export default function SecurityReport({ findings, advice }: SecurityReportProps) {
   if (findings.length === 0) {
     return (
-      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-6 flex items-center gap-4">
-        <ShieldCheck className="w-8 h-8 text-emerald-400 shrink-0" />
+      <div className="rounded-xl border border-[var(--color-severity-pass)]/20 bg-[var(--color-severity-pass-bg)] p-6 flex items-center gap-4">
+        <ShieldCheck className="w-8 h-8 text-[var(--color-severity-pass)] shrink-0" />
         <div>
-          <p className="font-semibold text-emerald-400">No security issues found</p>
+          <p className="font-semibold text-[var(--color-severity-pass)]">No security issues found</p>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             Your deployment passed all security checks.
           </p>

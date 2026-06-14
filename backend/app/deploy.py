@@ -212,7 +212,20 @@ def run_deployment_pipeline(deployment_id: str, db_url: str):
 
         commit = get_latest_commit(repo_dir)
         dep.commit_hash = commit
+        
+        # Keep subdomain as: project-name-5letteruniquegitid
+        unique_id = commit[:5] if commit else "xxxxx"
+        subdomain = f"{dep.project_name}-{unique_id}"
+        
+        # Prevent subdomain collisions
+        exists = db.query(Deployment).filter(Deployment.subdomain == subdomain, Deployment.id != dep.id).first()
+        if exists:
+            import uuid
+            subdomain = f"{dep.project_name}-{unique_id}-{uuid.uuid4().hex[:3]}"
+            
+        dep.subdomain = subdomain
         db.commit()
+        
         log(f"✅ Repository cloned. Commit: {commit[:8]}")
 
         # --- Step 2: Detect framework ---
@@ -455,7 +468,8 @@ def deploy(
 
     # Allocate a host port
     host_port = _find_available_port(db)
-    subdomain = project_name
+    import uuid
+    subdomain = f"{project_name}-temp-{uuid.uuid4().hex[:5]}"
 
     # Create deployment record
     dep = Deployment(
@@ -580,26 +594,39 @@ def delete_deployment(
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
-    """Stop container, remove reverse proxy, and mark deployment as stopped."""
+    """Stop container, remove reverse proxy, delete Docker image, delete cloned repo, and delete Postgres entry."""
+    import shutil
+    from app.docker_utils import remove_image
+
     dep = _get_owned_deployment(db, deployment_id, current_user)
 
-    # Stop container
+    # 1. Stop container
     if dep.container_name:
         stop_container(dep.container_name)
 
-    # Remove reverse proxy
+    # 2. Remove reverse proxy
     if dep.subdomain:
         loop = asyncio.new_event_loop()
         loop.run_until_complete(remove_reverse_proxy(dep.subdomain))
         loop.close()
 
-    dep.status = DeploymentStatus.STOPPED
-    db.commit()
+    # 3. Remove Docker image
+    image_tag = f"infrapilot-{dep.project_name}:latest"
+    remove_image(image_tag)
 
-    # Cleanup broadcaster
+    # 4. Delete local cloned repository directory
+    repo_dir = os.path.join(REPOS_BASE_DIR, dep.project_name)
+    if os.path.exists(repo_dir):
+        shutil.rmtree(repo_dir, ignore_errors=True)
+
+    # 5. Cleanup broadcaster
     remove_broadcaster(str(dep.id))
 
-    return {"detail": "Deployment stopped", "deployment_id": str(dep.id)}
+    # 6. Delete from Postgres
+    db.delete(dep)
+    db.commit()
+
+    return {"detail": "Deployment deleted successfully", "deployment_id": str(deployment_id)}
 
 
 @router.get("/deploy/{deployment_id}/status")

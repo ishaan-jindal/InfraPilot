@@ -209,7 +209,7 @@ export default function DeploymentDetailPage() {
               href={deployment.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-severity-pass)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
             >
               <Globe className="w-4 h-4" /> Visit Site
             </a>
@@ -227,7 +227,7 @@ export default function DeploymentDetailPage() {
           <button
             onClick={handleDelete}
             disabled={!!actionLoading}
-            className="p-2.5 rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-red-400 hover:border-red-400/30 disabled:opacity-40 transition-colors"
+            className="p-2.5 rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-severity-critical)] hover:border-[var(--color-severity-critical)]/30 disabled:opacity-40 transition-colors"
             title="Delete"
           >
             <Trash2 className="w-4 h-4" />
@@ -242,11 +242,11 @@ export default function DeploymentDetailPage() {
 
       {/* Approval banner */}
       {deployment.status === "awaiting_approval" && (
-        <div className="rounded-xl border border-orange-400/30 bg-orange-400/5 p-5 flex items-center justify-between gap-4">
+        <div className="rounded-xl border border-[var(--color-severity-high)]/30 bg-[var(--color-severity-high-bg)] p-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <ShieldCheck className="w-6 h-6 text-orange-400 shrink-0" />
+            <ShieldCheck className="w-6 h-6 text-[var(--color-severity-high-text)] shrink-0" />
             <div>
-              <p className="font-semibold text-orange-400">
+              <p className="font-semibold text-[var(--color-severity-high-text)]">
                 Security Review Required
               </p>
               <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">
@@ -258,7 +258,7 @@ export default function DeploymentDetailPage() {
           <button
             onClick={handleApprove}
             disabled={actionLoading === "approve"}
-            className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 transition-colors"
+            className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--color-severity-high-text)] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
             {actionLoading === "approve" ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -322,7 +322,7 @@ export default function DeploymentDetailPage() {
         >
           <ShieldCheck className="w-4 h-4" /> Security
           {security && security.report.length > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-orange-400/10 text-orange-400 text-xs font-bold">
+            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[var(--color-severity-high-bg)] text-[var(--color-severity-high-text)] text-xs font-bold">
               {security.report.length}
             </span>
           )}
