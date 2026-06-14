@@ -2,432 +2,123 @@
 
 ### Own Your Infrastructure. Verify Its Security.
 
-An AI-powered Secure Deployment Platform that prevents developers from shipping insecure infrastructure.
+[![Live Demo](https://img.shields.io/badge/Live-Demo-3D5AFE?style=for-the-badge)](https://infrapilot.ishaanjindal.tech/)
+[![GitHub License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
-InfraPilot analyzes repositories, audits infrastructure, identifies attack vectors, recommends fixes using AI, and then securely deploys applications to either managed infrastructure or the developer's own VPS.
-
-**Security is the product. Deployment is the action you take after validation.**
-
----
-
-# The Problem
-
-Developers deploy applications every day without knowing:
-
-- What ports are exposed
-- Whether secrets are leaking in code or git history
-- Whether SSH is hardened
-- Whether Docker is configured safely
-- Whether their application is publicly exposing vulnerabilities
-
-Modern deployment platforms make it easy to ship code — but none of them tell you if that code is **safe to ship**.
+InfraPilot is a secure deployment platform that solves the critical trade-off between managed ease-of-use and self-hosted control. It analyzes repositories, audits infrastructure configuration, scores your security posture out of 100, offers AI-powered remediation advice, and deploys applications securely—to either our managed environment or your own self-hosted VPS.
 
 ---
 
-### Managed Platforms (Vercel, Netlify, Railway)
-
-- Easy deployment
-- Great developer experience
-- **Zero visibility into security posture**
-- Vendor lock-in
-
-### Self-Hosted Infrastructure (VPS, EC2, Home Labs)
-
-- Full ownership
-- Lower long-term costs
-- **Complex security configuration**
-- SSL, firewalls, SSH hardening left to the developer
+## 🚀 Live Demo
+Access the live hackathon deployment at: **[https://infrapilot.ishaanjindal.tech/](https://infrapilot.ishaanjindal.tech/)**
 
 ---
 
-Developers are forced to choose between convenience and control — and neither option tells them how exposed they are.
+## 💡 The Pitch
+
+Modern PaaS solutions (Vercel, Netlify, Railway) make deployment incredibly simple, but offer developers **zero visibility into security posture** and lock them into proprietary ecosystems. Alternatively, deploying to self-hosted VPS instances gives developers full ownership but demands **complex security management**—often leaving SSH, firewalls, and Docker configurations exposed to severe vulnerabilities.
+
+**InfraPilot bridges this gap.** 
+It treats **security as the foundation** and **deployment as the resulting action**. Before a single line of code goes live, InfraPilot runs static analysis, audits Docker configurations, checks for leaked credentials, pauses on critical issues, suggests fixes, and secures the deployment surface.
 
 ---
 
-# The Solution
-
-InfraPilot combines **security intelligence** with **deployment automation**.
-
-Users connect a GitHub repository. Before anything deploys, InfraPilot performs a full security audit and generates an actionable risk report.
-
----
-
-## Three Layers
-
-### Layer 1 — Deployment Engine
-
-GitHub → Build → Deploy
-
-- Managed hosting (InfraPilot infrastructure)
-- Bring Your Own Infrastructure (any Linux server with SSH)
-- Automatic framework detection
-- Docker containerization
-- Caddy reverse proxy with auto-HTTPS
-
-### Layer 2 — Security Intelligence
-
-Continuous analysis across code, containers, and infrastructure:
-
-- Secret detection (API keys, credentials, tokens)
-- Dependency vulnerability scanning
-- Docker misconfiguration checks
-- SSH hardening validation
-- Open port analysis
-- HTTPS verification
-- Git history scanning for leaked credentials
-
-### Layer 3 — Security Copilot (AI)
-
-AI-powered remediation that doesn't just find problems — it fixes them:
-
-- Explain risks in plain language
-- Prioritize fixes by severity
-- Generate remediation commands and configs
-- Simulate potential attack paths
-
----
-
-# Core Workflow
-
-### Step 1 — Connect Repository
+## 🛠️ The Architecture
 
 ```
-github.com/user/project
+                    GitHub Repo
+                        │
+                        ▼
+                Security Audit Stage
+         (Secrets / Docker configs / Ports)
+                        │
+          Awaiting Approval / Gated (If Critical)
+                        │
+                        ▼
+           Docker Build Stage (Non-Root User)
+                        │
+                        ▼
+            Caddy Reverse Proxy Routing
+              (SSL / Dynamic Subdomains)
+       ┌────────────────┴────────────────┐
+       ▼                                 ▼
+Managed Infrastructure          Bring Your Own Server
+(Dynamic Containers)            (Self-Hosted Linux VM)
 ```
 
 ---
 
-### Step 2 — Security Analysis
+## ✨ Core Features
 
-AI + static analysis runs automatically.
+### 🛡️ 1. Infrastructure Security Score
+A single, standardized rating from **0–100** summarizing the security configuration of your code and environment. Deductions are dynamically applied based on severity levels (Critical, High, Medium, Low) for issues like exposed secrets or root-privileged Docker containers.
 
-Checks:
+### 🔑 2. Proactive Secret Leak Detection
+Scanning engine looking for AWS Access Keys, OpenAI API keys, Stripe tokens, Slack credentials, and GitHub PATs. It prevents developers from pushing hardcoded secrets or committed `.env` files.
 
-- Hardcoded secrets in source and git history
-- Dangerous environment variables
-- Open ports
-- Missing HTTPS
-- Docker misconfigurations (root containers, exposed daemons)
-- Dependency vulnerabilities (CVE scanning)
-- Weak SSH configurations
+### 🐳 3. Hardened Docker Containerization
+- **Vulnerability Remediation**: All framework templates automatically implement the `USER` directive (`node` for Node/NextJS/Static environments and a custom `appuser` system account for Python/FastAPI/Flask/Django apps), stopping container-escape exploits.
+- **Rootless Execution**: Files are built, copied, and executed under restricted permissions, leaving host daemons safe from attack.
 
----
+### 🤖 4. AI Security Advisor
+Integrates Google Gemini to explain identified security risks in plain language and provides developers with immediate, drop-in config edits and command remediation steps before deployment.
 
-### Step 3 — Infrastructure Risk Report
-
-```
-Security Score: 73/100
-
-CRITICAL
-  AWS key exposed in commit history
-
-HIGH
-  Container running as root
-  SSH password authentication enabled
-
-MEDIUM
-  Port 5432 publicly accessible
-  Outdated dependency: express 4.17 (CVE-2024-XXXX)
-
-LOW
-  Missing security headers (X-Frame-Options, CSP)
-```
+### 🌐 5. Dynamic Subdomains & Asset Cleanups
+- **SHA-Anchored Subdomains**: Automatically provisions subdomains mapped to the git commit hash (e.g. `[project-name]-[commit-sha-prefix]`).
+- **Deep Deletion**: Deleting a deployment stops/removes the container, deletes the Docker image, frees disk space by deleting local repositories, and deletes PostgreSQL records.
 
 ---
 
-### Step 4 — AI Security Advisor
-
-Instead of "Deploy Now", InfraPilot shows:
-
-```
-⚠ Security Check Required — Fix Before Deploying
-
-Recommended Actions:
-
-  ✓ Rotate exposed AWS key and remove from git history
-  ✓ Add USER directive to Dockerfile (non-root)
-  ✓ Disable SSH password auth, enforce key-only
-  ✓ Restrict PostgreSQL to localhost or VPN
-  ✓ Upgrade express to 4.19+
-  ✓ Add security headers to reverse proxy config
-```
-
-AI generates the exact commands, Dockerfile patches, and config changes needed.
+## 💻 Supported Frameworks
+InfraPilot automatically detects and provisions:
+- **Next.js** (Multi-stage build)
+- **React & Vite-React** (Built and served via single-page static runner)
+- **FastAPI / Flask / Django** (Python WSGI/ASGI configurations)
+- **Generic Dockerfile Projects**
+- **Static HTML/CSS/JS websites**
 
 ---
 
-### Step 5 — Secure Deployment
-
-Deploy only after validation passes.
-
-Post-deployment monitoring:
-
-```
-Public Exposure Report
-
-  Open Ports: 80, 443
-  SSL: Valid (A+ rating)
-  SSH: Key-only, fail2ban active
-  Risk Level: Low
-
-  Security Score: 94/100
-```
-
----
-
-# Key Features
-
-## Infrastructure Security Score
-
-A single metric that captures overall security posture — like a credit score for your infrastructure.
-
-```
-Security Score: 88/100
-
-  HTTPS              PASS
-  SSH Hardening       PASS
-  Firewall            PASS
-  Secrets Management  WARNING
-  Container Isolation PASS
-  Dependencies        PASS
-```
-
----
-
-## Secret Leak Detection
-
-Scans source code, environment files, and full git history for exposed credentials:
-
-```
-DETECTED SECRETS
-
-  .env:3          AWS_SECRET_ACCESS_KEY=AKIA...
-  config.py:12    OPENAI_API_KEY=sk-...
-  git history     DATABASE_URL with password (commit a3f8c2)
-```
-
-Alerts before deployment. Blocks deploy if critical secrets are found.
-
----
-
-## Docker Security Analyzer
-
-Inspects Dockerfiles and container configurations for common misconfigurations:
-
-- Running as root
-- Exposing unnecessary ports
-- Using `latest` tags (unpinned dependencies)
-- Missing health checks
-- Privileged mode enabled
-- Sensitive files copied into image
-
----
-
-## AI Threat Simulator
-
-Ask: *"How could my server be attacked?"*
-
-```
-Potential Attack Paths:
-
-  1. Brute force SSH (password auth enabled, no fail2ban)
-  2. PostgreSQL exposed on 0.0.0.0:5432 (no firewall rule)
-  3. Leaked API key in git history (AWS account compromise)
-  4. Container escape via privileged mode
-  5. Dependency supply chain attack (3 outdated packages with known CVEs)
-```
-
----
-
-## Infrastructure Footprint Map
-
-Understand exactly what your deployment exposes:
-
-```
-GitHub Repository
-        ↓
-Docker Container (node:20, port 3000)
-        ↓
-Reverse Proxy (Caddy, ports 80/443)
-        ↓
-Public Domain (myapp.infrapilot.dev)
-        ↓
-Open Ports: 22, 80, 443
-        ↓
-Connected Services: PostgreSQL, Redis, S3
-```
-
----
-
-## Continuous Security Monitoring
-
-Post-deployment alerts when new vulnerabilities are discovered:
-
-```
-⚠ New Vulnerability Detected
-
-  Package:   express 4.18.2
-  CVE:       CVE-2024-XXXX
-  Severity:  High
-  Fix:       Upgrade to 4.19.0
-
-  [Auto-Fix & Redeploy]
-```
-
----
-
-# Deployment Targets
-
-## Managed Hosting
-
-Deploy to infrastructure managed by InfraPilot.
-
-- No VPS required
-- Instant onboarding
-- Automatic HTTPS
-- Generated URL: `https://my-app.infrapilot.dev`
-
-## Bring Your Own Infrastructure
-
-Deploy to servers you already own via SSH.
-
-Supported targets:
-
-- Oracle Cloud
-- AWS EC2
-- DigitalOcean
-- Hetzner
-- Azure VMs
-- Home Labs / Raspberry Pi
-- Any Linux server with SSH access
-
----
-
-# Supported Frameworks
-
-- Next.js
-- React
-- FastAPI
-- Flask
-- Django
-- Generic Docker projects
-- Static sites
-
-Framework detection is automatic via static analysis.
-
----
-
-# System Architecture
-
-```
-                    GitHub
-                       |
-              Security Analysis
-              (Secrets / CVEs / Docker / SSH)
-                       |
-              Risk Report + AI Remediation
-                       |
-                  Deployment Engine
-                       |
-     -----------------------------------
-     |                                 |
-  Managed Infrastructure      User Infrastructure
-     |                                 |
-   Docker                           Docker
-     |                                 |
-   Caddy (HTTPS)                  Caddy (HTTPS)
-     |                                 |
-     -----------------------------------
-                       |
-              Continuous Monitoring
-              (Vulnerabilities / Exposure)
-```
-
----
-
-# Hackathon MVP
-
-### Must Have
-
-- ✅ GitHub integration (OAuth + repo selection)
-- ✅ Deployment engine (clone → detect → build → run)
-- ✅ Security Score (hero metric, 0-100 scoring system)
-- ✅ Secret scanner (source + env files + regex patterns for AWS, OpenAI, Stripe, Slack, GitHub tokens)
-- ✅ Docker security analyzer (root user detection, unnecessary port exposure)
-- ✅ AI remediation suggestions (Gemini-powered, with Ollama and local template fallbacks)
-- ✅ Frontend dashboard (Next.js, live logs, deployment pipeline, security reports)
-
-### Nice To Have
-
-- 🔲 Open port scanner
-- 🔲 SSH hardening checks
-- 🔲 Dependency vulnerability feed (CVE database)
-- 🔲 Git history secret scanning
-
-### Post-Hackathon
-
-- Multi-cloud support
-- Team management
-- Continuous monitoring
-- Auto-redeploy on push
-- Billing
-
----
-
-## Quick Start
+## ⚙️ Quick Start (Local Development)
 
 ### Prerequisites
 - Docker & Docker Compose
-- Python 3.12+ with a virtual environment
-- Node.js 20+ (for frontend development only)
-- A GitHub OAuth App ([create one here](https://github.com/settings/developers))
-- (Optional) A Google AI Studio API key for Gemini-powered security advice
+- Python 3.12+ (with a virtual environment)
+- Node.js 20+ (for frontend development)
+- A GitHub OAuth Application ([Create one here](https://github.com/settings/developers))
 
 ### 1. Clone & Configure
-
 ```bash
 git clone https://github.com/ishaan-jindal/InfraPilot.git
 cd InfraPilot
 cp backend/.env.example backend/.env
-# Edit backend/.env with your GitHub OAuth credentials and Gemini API key
 ```
+Edit the `backend/.env` file and supply your GitHub OAuth keys, Gemini API token, and postgres credentials.
 
-### 2. Start Infrastructure (Docker)
-
+### 2. Launch Local Database & Proxy
 ```bash
 docker compose up -d
-# Starts: PostgreSQL (port 5433), Frontend (port 3000), Caddy reverse proxy
+# Starts: PostgreSQL (port 5433), NextJS Frontend (port 3000), Caddy reverse proxy
 ```
 
-### 3. Start Backend (Local)
-
+### 3. Run the Backend API Natively
 ```bash
 cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
-# Backend runs on http://localhost:8000
+# Backend will spin up on http://localhost:8000
 ```
 
-### 4. Open the App
-
-Visit http://localhost:3000 → Sign in with GitHub → Deploy a repo!
-
----
-
-# Demo Pitch
-
-> Developers deploy applications every day without understanding the security risks they are exposing. InfraPilot analyzes repositories, audits infrastructure, identifies attack vectors, recommends fixes using AI, and then securely deploys applications to either our managed infrastructure or the developer's own VPS. We help developers take back control of their digital infrastructure.
+### 4. Deploy!
+Go to **http://localhost:3000**, authenticate with GitHub, pick a repository, and audit your first secure deployment.
 
 ---
 
-# Vision
-
-InfraPilot is a **Cybersecurity Control Plane for Self-Hosted Infrastructure**.
-
-The deployment engine is how developers ship code. The security layer is why they choose InfraPilot over everything else.
-
-Every deployment is audited. Every risk is surfaced. Every fix is actionable.
-
-**Deploy anywhere. Deploy securely.**
+## 📈 Vision & Future Roadmap
+InfraPilot's ultimate goal is to become the **de facto Cybersecurity Control Plane for Self-Hosted Clouds**.
+1. **Bring Your Own Infrastructure (BYOI)**: Deploy to your own remote VPS over SSH.
+2. **Dynamic Port Scan Validation**: Periodically run host network audits.
+3. **Automated Git Hook Webhooks**: Instantly rebuild and scan on every git push.
+4. **Vulnerability CVE Feed Integration**: Match packages against real-time vulnerability databases.

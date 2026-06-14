@@ -1,6 +1,6 @@
 # InfraPilot — MVP Progress
 
-> Last updated: 2026-06-13
+> Last updated: 2026-06-14
 
 ---
 
@@ -17,13 +17,15 @@ The FastAPI backend is fully built and verified.
 | **Repository API** | ✅ Done | List repos, single repo details, branches |
 | **Framework Detection** | ✅ Done | Next.js, React, FastAPI, Flask, Django, Docker, Static |
 | **Dockerfile Generation** | ✅ Done | Per-framework templates, respects existing Dockerfiles |
+| **Non-Root Docker Execution** | ✅ Done | Implemented `USER node` / `USER appuser` directives across all templates |
 | **Docker Build & Run** | ✅ Done | Image build with streaming output, container lifecycle |
 | **Deployment Pipeline** | ✅ Done | Clone → detect → scan → build → run → proxy (background task) |
 | **Security Scanner** | ✅ Done | Secret detection, Dockerfile linting, security scoring |
 | **AI Security Advisor** | ✅ Done | Gemini-powered remediation with Ollama + local fallbacks |
 | **Live Logs (WebSocket)** | ✅ Done | Real-time log streaming with history replay |
 | **Caddy Reverse Proxy** | ✅ Done | Admin API integration, graceful fallback if unavailable |
-| **Deployment Management** | ✅ Done | List, inspect, redeploy, delete deployments |
+| **SHA-Anchored Subdomains** | ✅ Done | Subdomain names mapped to project name + 5-letter git commit SHA |
+| **Deep Deletion & Cleanup** | ✅ Done | Stopping container, removing Caddy proxy, deleting Docker image, wiping git repo, and removing DB records |
 | **CORS** | ✅ Done | Open for MVP, ready for frontend |
 
 ### API Endpoints (16)
@@ -44,30 +46,8 @@ GET     /deploy/{id}/status                  — Container health check
 GET     /deploy/{id}/security-advisor        — Security report + AI advice
 POST    /deploy/{id}/approve                 — Approve after security review
 POST    /deploy/{id}/redeploy                — Redeploy
-DELETE  /deploy/{id}                         — Stop & remove
+DELETE  /deploy/{id}                         — Stop, remove & delete all assets
 WS      /ws/logs/{id}                        — Live log stream
-```
-
-### Backend File Structure
-
-```
-backend/
-├── app/
-│   ├── __init__.py
-│   ├── main.py            ← FastAPI app, CORS, lifespan, routers
-│   ├── config.py           ← Environment config
-│   ├── database.py         ← SQLAlchemy engine & session
-│   ├── models.py           ← Deployment model + enums
-│   ├── github.py           ← OAuth + repository routes
-│   ├── deploy.py           ← Deployment pipeline & endpoints
-│   ├── detector.py         ← Framework detection
-│   ├── docker_utils.py     ← Dockerfile gen, build, run, stop
-│   ├── repo_manager.py     ← Git clone & commit extraction
-│   ├── security.py         ← Secret scanner, Dockerfile linter, AI advisor
-│   ├── caddy.py            ← Caddy reverse proxy management
-│   └── ws.py               ← WebSocket live log streaming
-├── .env / .env.example
-└── requirements.txt
 ```
 
 ---
@@ -87,7 +67,7 @@ Deploy to user-owned servers via SSH.
 
 ## Phase 3: Frontend Dashboard ✅
 
-Next.js 16 dashboard with dark theme UI.
+Next.js 16 dashboard with warm light sand theme UI.
 
 | Component | Status | Details |
 |-----------|--------|---------|
@@ -100,35 +80,8 @@ Next.js 16 dashboard with dark theme UI.
 | Security report | ✅ Done | Findings list with severity badges + AI advice |
 | Deployment history | ✅ Done | List, inspect, redeploy, delete |
 | Status badges | ✅ Done | Color-coded badges for all pipeline states |
+| Theme Unification | ✅ Done | Visual system mapped fully to globals.css color variables |
 | Server management (BYOI) | 🔲 Todo | Add/remove/test SSH servers |
-
-### Frontend File Structure
-
-```
-frontend/src/
-├── app/
-│   ├── page.tsx                           ← Landing page
-│   ├── layout.tsx                         ← Root layout + fonts
-│   ├── globals.css                        ← Design system + CSS variables
-│   ├── auth/callback/page.tsx             ← OAuth callback handler
-│   └── dashboard/
-│       ├── layout.tsx                     ← Sidebar layout
-│       ├── page.tsx                       ← Deployment list (main dashboard)
-│       ├── deploy/page.tsx                ← Deploy wizard
-│       └── deployments/[id]/page.tsx      ← Deployment detail + logs
-├── components/
-│   ├── Navbar.tsx, Hero.tsx, Footer.tsx   ← Landing page components
-│   └── dashboard/
-│       ├── Sidebar.tsx                    ← Navigation sidebar
-│       ├── LogViewer.tsx                  ← Live/static log viewer
-│       ├── DeploymentPipeline.tsx         ← Visual pipeline progress
-│       ├── SecurityReport.tsx             ← Security findings + AI advice
-│       └── StatusBadge.tsx                ← Status indicator badges
-└── lib/
-    ├── api.ts                             ← Backend API client (fetch + WebSocket)
-    ├── auth.ts                            ← Token management helpers
-    └── types.ts                           ← TypeScript type definitions
-```
 
 ---
 
@@ -146,51 +99,13 @@ frontend/src/
 
 ---
 
-## Architecture
+## Future Roadmap / Plans
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Docker Compose                       │
-│  ┌──────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │ Postgres │  │   Frontend   │  │  Caddy Reverse   │   │
-│  │ :5433    │  │ Next.js :3000│  │  Proxy (host net) │   │
-│  └──────────┘  └──────────────┘  └──────────────────┘   │
-└─────────────────────────────────────────────────────────┘
-         │                                    │
-         │            ┌──────────────┐        │
-         └────────────│   Backend    │────────┘
-                      │ FastAPI :8000│
-                      │  (local)     │
-                      └──────┬───────┘
-                             │
-                      ┌──────┴───────┐
-                      │ Docker Engine│
-                      │ (user apps)  │
-                      └──────────────┘
-```
+### 1. Remote SSH Target Integration (BYOI)
+Allow developers to register their personal VPS nodes (e.g. AWS EC2, DigitalOcean droplets) via SSH public key authentication. Deployments will be securely cloned, verified, containerized, and executed directly on the host's remote Docker engine using Python's `Paramiko` library.
 
-- **PostgreSQL** — Dockerized database on port 5433
-- **Frontend** — Dockerized Next.js standalone app on port 3000
-- **Caddy** — Dockerized reverse proxy on host network for deployed apps
-- **Backend** — Runs locally via `uvicorn` with direct access to Docker CLI
-- **User Apps** — Built and run as Docker containers by the backend
+### 2. Automatic Re-deployments (Webhooks)
+Enable webhooks to listen for GitHub `push` events. Upon push, the platform will automatically trigger a new deployment pipeline: fetch the latest changes, run the security audit scanner, rebuild the Docker image, and update the running container with zero-downtime routing.
 
----
-
-## Quick Start
-
-```bash
-# 1. Configure environment
-cp backend/.env.example backend/.env
-# Edit backend/.env with your GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GEMINI_API_KEY
-
-# 2. Start infrastructure (DB, frontend, Caddy)
-docker compose up -d
-
-# 3. Start the backend locally
-cd backend
-source .venv/bin/activate
-uvicorn app.main:app --reload
-
-# 4. Open http://localhost:3000
-```
+### 3. Continuous Infrastructure Security Audits
+Perform hourly health checks on deployed container instances and external port exposures. Alert developers via email or Webhooks if an unauthorized port becomes publicly exposed on the host machine.
